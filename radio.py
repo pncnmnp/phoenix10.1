@@ -1,4 +1,5 @@
 # Note: brew install ffmpeg
+# Note: brew install espeak
 
 import datetime
 import subprocess
@@ -71,9 +72,9 @@ class Dialogue:
     def wakeup(self):
         now = datetime.datetime.now()
         speech = (
-            "Greetings! "
-            f"It is {now.hour} O clock at the time of this recording. "
-            "Whenever you are listening to this, I hope you are doing splendid! Let's start this day with some music shall we?"
+            "You are tuning into radio ten point one! "
+            f"It is {now.hour} {now.minute} in my studio. "
+            "I hope you are having a splendid day so far!"
         )
         return speech
 
@@ -233,7 +234,9 @@ class Dialogue:
                 "--text",
                 text,
                 "--model_name",
-                "tts_models/en/ljspeech/tacotron2-DDC",
+                "tts_models/en/vctk/vits",
+                "--speaker_idx",
+                "p234",
                 "--out_path",
                 f"./temp/a{self.index}.wav",
             ]
