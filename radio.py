@@ -6,6 +6,7 @@ import json
 import random
 import os
 import glob
+import re
 
 import nltk
 import requests
@@ -163,6 +164,53 @@ class Dialogue:
         file_handle = base.export(outfile, format="wav")
 
     def cleaner(self, speech):
+        abbreviations = {
+            "a": "ay",
+            "b": "bee",
+            "c": "sieh",
+            "d": "dea",
+            "e": "ee",
+            "f": "eff",
+            "g": "jie",
+            "h": "edge",
+            "i": "eye",
+            "j": "jay",
+            "k": "kaye",
+            "l": "elle",
+            "m": "emme",
+            "n": "en",
+            "o": "owe",
+            "p": "pea",
+            "q": "queue",
+            "r": "are",
+            "s": "esse",
+            "t": "tea",
+            "u": "hugh",
+            "v": "vee",
+            "w": "doub you",
+            "x": "ex",
+            "y": "why",
+            "z": "zee",
+            "1": "one",
+            "2": "two",
+            "3": "three",
+            "4": "four",
+            "5": "five",
+            "6": "six",
+            "7": "seven",
+            "8": "eight",
+            "9": "nine",
+            "0": "zero",
+        }
+        # Regex from https://stackoverflow.com/a/53149449 by SQB
+        # Licensed under CC BY-SA 4.0
+        acronyms = re.findall("\\b[A-Z](?:[\\.&]?[A-Z]){1,7}\\b", speech)
+        for acronym in acronyms:
+            cleaned_up = acronym.replace(".", "")
+            pronounce = str()
+            for alphabet in cleaned_up:
+                pronounce += abbreviations[alphabet.lower()] + " "
+            speech = speech.replace(acronym, pronounce)
         return english_cleaners(speech.replace("..", ".").replace("’", "'"))
 
     def speak(self, speech):
