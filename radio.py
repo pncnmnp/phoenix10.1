@@ -4,15 +4,19 @@ import datetime
 import subprocess
 import json
 import random
+import os
+import glob
+import logging
 
 import nltk
 import requests
 import feedparser
 from pydub import AudioSegment
-from yt_dlp import YoutubeDL
+import ytmdl
 
 # Dependencies
 # nltk.download("punkt")
+logging.basicConfig(level="warning")
 
 
 class Recommend:
@@ -77,11 +81,11 @@ class Dialogue:
         articles = self.rec.news(category, k)
         start = f"Now for today's {category} news. "
         filler = [". In another news, ", ". Yet another news, ", ". A latest update, "]
-        speech, choice = start, None
+        speech, choice_index = start, 0
         for article in articles:
-            choice = random.choice(filler)
-            speech += article + choice
-        return speech[: -len(choice)]
+            speech += article + filler[choice_index % len(filler)]
+            choice_index += 1
+        return speech[: -len(filler[choice_index - 1])]
 
     def weather(self, location):
         forecast = self.rec.weather(location)
@@ -94,25 +98,33 @@ class Dialogue:
         return speech
 
     def on_this_day(self):
-        fact = self.rec.on_this_day(1)
-        speech = f"Fun fact! On this day {fact[0]}"
+        fact = random.choice(self.rec.on_this_day(5))
+        speech = f"Fun fact! On this day {fact}"
         return speech
 
     def music(self, song):
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "outtmpl": f"./temp/a{self.index}.wav",
-            "postprocessors": [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "wav",
-                    "preferredquality": "192",
-                }
-            ],
-        }
-        with YoutubeDL(ydl_opts) as ydl:
-            ydl.download(song)
+        args = ytmdl.main.arguments()
+        args.SONG_NAME = [song]
+        args.choice = 1
+        args.quiet = True
+        ytmdl.defaults.DEFAULT.SONG_DIR = "./temp/"
+        ytmdl.main.main(args)
+
+        # Logic to change name
+        # ytmdl does not natively support this feature
+        mp3 = glob.glob(os.path.join("./temp/", "*.mp3"))[0]
+        sound = AudioSegment.from_mp3(mp3)
+        sound.export(f"./temp/a{self.index}.wav", format="wav")
+        os.remove(mp3)
         self.index += 1
+
+    def music_meta(self, song):
+        info = ytmdl.metadata.get_from_itunes(song)[0].json
+        speech = (
+            f'The next song is from the world of {info["primaryGenreName"]}. '
+            f'{info["trackName"]} by {info["artistName"]}. '
+        )
+        return speech
 
     def flow(self):
         for action, meta in self.schema:
@@ -122,9 +134,9 @@ class Dialogue:
                     speech = self.wakeup()
                     self.speak(speech)
                 case "music":
-                    speech = "Now for some music! Catchy lyrics and a romantic beat is how I would describe the next song!"
-                    self.speak(speech)
                     for song in meta:
+                        speech = self.music_meta(song)
+                        self.speak(speech)
                         self.music(song)
                 case "news":
                     category, k = meta
