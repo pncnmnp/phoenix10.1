@@ -6,17 +6,16 @@ import json
 import random
 import os
 import glob
-import logging
 
 import nltk
 import requests
 import feedparser
 from pydub import AudioSegment
+from TTS.tts.utils.text.cleaners import english_cleaners
 import ytmdl
 
 # Dependencies
 # nltk.download("punkt")
-logging.basicConfig(level="warning")
 
 
 class Recommend:
@@ -85,7 +84,7 @@ class Dialogue:
         for article in articles:
             speech += article + filler[choice_index % len(filler)]
             choice_index += 1
-        return speech[: -len(filler[choice_index - 1])]
+        return speech[: -len(filler[(choice_index - 1) % len(filler)])]
 
     def weather(self, location):
         forecast = self.rec.weather(location)
@@ -154,10 +153,6 @@ class Dialogue:
         return 0
 
     def radio(self):
-        """
-        From: https://stackoverflow.com/a/2900266/7543474 by tom10
-        Licensed under Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
-        """
         infiles = [
             AudioSegment.from_file(f"./temp/a{i}.wav") for i in range(self.index)
         ]
@@ -167,6 +162,9 @@ class Dialogue:
             base = base.append(infile)
         file_handle = base.export(outfile, format="wav")
 
+    def cleaner(self, speech):
+        return english_cleaners(speech.replace("..", ".").replace("’", "'"))
+
     def speak(self, speech):
         if speech == None:
             return
@@ -175,7 +173,7 @@ class Dialogue:
         for speech in speeches:
             curr = say + speech
             if len(curr) > 200:
-                self.save_speech(say.replace("..", "."))
+                self.save_speech(self.cleaner(say))
                 say = str()
             say += speech + " "
         self.save_speech(say)
