@@ -2,17 +2,18 @@
 # Note: brew install espeak
 
 import datetime
-import subprocess
+import glob
 import json
 import random
-import os
-import glob
 import re
+import subprocess
+import os
 
-import nltk
-import requests
 import feedparser
+import ffmpy
+import nltk
 from pydub import AudioSegment
+import requests
 from TTS.tts.utils.text.cleaners import english_cleaners
 import ytmdl
 
@@ -34,13 +35,13 @@ class Recommend:
 
     def news(self, category="world", k=5):
         paper = feedparser.parse(self.news_urls(category))
-        info = list()
+        info = []
         for source in paper.entries[:k]:
             info += [source["title"] + ". " + source["summary"]]
         return info
 
     def weather(self, location):
-        r = requests.get(f"https://wttr.in/{location}?format=j1")
+        r = requests.get(f"https://wttr.in/{location}?format=j1", timeout=10)
         forecast = r.json()["current_condition"][0]
         rain = r.json()["weather"][0]["hourly"][0]["chanceofrain"]
         summary = {
@@ -57,7 +58,7 @@ class Recommend:
         now = datetime.datetime.now()
         month, day = now.month, now.day
         url = f"https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/{month}/{day}"
-        r = requests.get(url)
+        r = requests.get(url, timeout=10)
         events = [event["text"] for event in r.json()["events"]]
         facts = sorted(events, key=lambda fact: len(fact))[:k]
         return facts
@@ -66,15 +67,25 @@ class Recommend:
 class Dialogue:
     def __init__(self, file="./schema.json"):
         self.rec = Recommend()
-        self.schema = json.load(open(file, "r"))
+        with open(file, "r", encoding="UTF-8") as f:
+            self.schema = json.load(f)
         self.index = 0
 
     def wakeup(self):
         now = datetime.datetime.now()
         speech = (
             "You are tuning into Phoenix ten point one! "
+            "I am your host Bono. "
             f"It is {now.hour} {now.minute} in my studio. "
             "I hope you are having a splendid day so far!"
+        )
+        return speech
+
+    def over(self):
+        speech = (
+            "And that's it for today's broadcast! ",
+            "Thanks for listening to Phoenix ten point one! ",
+            "Hope you have a great day ahead! ",
         )
         return speech
 
@@ -87,7 +98,7 @@ class Dialogue:
         for article in articles:
             speech += article + filler[choice_index % len(filler)]
             choice_index += 1
-        return speech[: -len(filler[(choice_index - 1) % len(filler)])]
+        return speech[: -len(filler[(choice_index - 1) % len(filler)])] + end
 
     def weather(self, location):
         forecast = self.rec.weather(location)
@@ -141,24 +152,27 @@ class Dialogue:
             match action:
                 case "up":
                     speech = self.wakeup()
-                    self.speak(speech)
+                    self.speak(speech, announce=True)
                 case "music":
                     for song in meta:
                         speech = self.music_meta(song)
-                        self.speak(speech)
+                        self.speak(speech, announce=True)
                         self.music(song)
                         speech = self.music_meta(song, start=False)
-                        self.speak(speech)
+                        self.speak(speech, announce=True)
                 case "news":
                     category, k = meta
                     speech = self.news(category, k)
                     self.speak(speech)
                 case "weather":
-                    speech = self.weather("Raleigh")
+                    speech = self.weather(meta)
                     self.speak(speech)
                 case "fun":
                     speech = self.on_this_day()
                     self.speak(speech)
+                case "end":
+                    speech = self.over()
+                    self.speak(speech, announce=True)
                 case _:
                     pass
         self.radio()
@@ -172,7 +186,7 @@ class Dialogue:
         base = infiles.pop(0)
         for infile in infiles:
             base = base.append(infile)
-        file_handle = base.export(outfile, format="wav")
+        base.export(outfile, format="wav")
 
     def cleaner(self, speech):
         abbreviations = {
@@ -213,24 +227,23 @@ class Dialogue:
             "9": "nine",
             "0": "zero",
         }
-        # Regex from https://stackoverflow.com/a/53149449 by SQB
-        # Licensed under CC BY-SA 4.0
-        acronyms = re.findall("\\b[A-Z](?:[\\.&]?[A-Z]){0,7}\\b", speech)
+        acronyms = re.findall("[A-Z](?:[\\.&]?[A-Z]){1,7}[\\.]?|[A-Z][\\.]", speech)
         for acronym in acronyms:
             cleaned_up = acronym.replace(".", "")
             pronounce = str()
             for alphabet in cleaned_up:
                 pronounce += abbreviations[alphabet.lower()] + " "
-            speech = speech.replace(acronym, pronounce).replace(".", "")
+            speech = speech.replace(acronym, pronounce.replace(".", ""))
         return english_cleaners(
             speech.replace("..", ".").replace("’", "'").replace(".,", ",")
         )
 
-    def speak(self, speech):
-        if speech == None:
+    def speak(self, speech, announce=False):
+        if speech is None:
             return
         speeches = nltk.sent_tokenize(speech)
         say = str()
+        start_file_index = self.index
         for speech in speeches:
             curr = say + speech
             if len(curr) > 200:
@@ -238,6 +251,37 @@ class Dialogue:
                 say = str()
             say += speech + " "
         self.save_speech(say)
+        if announce:
+            self.background_music()
+        else:
+            self.slow_it_down(start_file_index)
+        self.silence()
+
+    def slow_it_down(self, start_index):
+        for index in range(start_index, self.index):
+            src = f"./temp/a{index}.wav"
+            dest = "./temp/out.wav"
+            slowit = ffmpy.FFmpeg(
+                global_options=["-y"],
+                inputs={src: None},
+                outputs={dest: ["-filter:a", "atempo=0.9"]},
+            )
+            slowit.run()
+            # FFmpeg cannot edit existing files in-place
+            os.remove(src)
+            os.rename(dest, src)
+
+    def background_music(self, file="loboloco.wav"):
+        background = AudioSegment.from_wav(file)
+        background -= 25  # reduce the volume
+        speech = AudioSegment.from_wav(f"./temp/a{self.index - 1}.wav")
+        imposed = background[: speech.duration_seconds * 1000 + 3000].overlay(speech)
+        imposed.export(f"./temp/a{self.index - 1}.wav", format="wav")
+
+    def silence(self):
+        no_audio = AudioSegment.silent(duration=2000)
+        no_audio.export(f"./temp/a{self.index}.wav", format="wav")
+        self.index += 1
 
     def save_speech(self, text):
         subprocess.run(
@@ -251,7 +295,8 @@ class Dialogue:
                 "p267",
                 "--out_path",
                 f"./temp/a{self.index}.wav",
-            ]
+            ],
+            check=False,
         )
         self.index += 1
 
