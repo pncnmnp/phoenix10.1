@@ -36,7 +36,7 @@ class Recommend:
         paper = feedparser.parse(self.news_urls(category))
         info = list()
         for source in paper.entries[:k]:
-            info += [source["summary"]]
+            info += [source["title"] + ". " + source["summary"]]
         return info
 
     def weather(self, location):
@@ -72,7 +72,7 @@ class Dialogue:
     def wakeup(self):
         now = datetime.datetime.now()
         speech = (
-            "You are tuning into radio ten point one! "
+            "You are tuning into Phoenix ten point one! "
             f"It is {now.hour} {now.minute} in my studio. "
             "I hope you are having a splendid day so far!"
         )
@@ -81,6 +81,7 @@ class Dialogue:
     def news(self, category, k):
         articles = self.rec.news(category, k)
         start = f"Now for today's {category} news. "
+        end = f"And that's the {category} news."
         filler = [". In another news, ", ". Yet another news, ", ". A latest update, "]
         speech, choice_index = start, 0
         for article in articles:
@@ -119,13 +120,20 @@ class Dialogue:
         os.remove(mp3)
         self.index += 1
 
-    def music_meta(self, song):
+    def music_meta(self, song, start=True):
         info = ytmdl.metadata.get_from_itunes(song)[0].json
-        speech = (
-            f'The next song is from the world of {info["primaryGenreName"]}. '
-            f'{info["trackName"]} by {info["artistName"]}. '
-        )
-        return speech
+        if start:
+            speech = (
+                f'The next song is from the world of {info["primaryGenreName"]}. '
+                f'{info["trackName"]} by {info["artistName"]}. '
+            )
+            return speech
+        else:
+            speech = (
+                f'That was {info["trackName"]} by {info["artistName"]}. '
+                "You are listening to Phoenix ten point one! "
+            )
+            return speech
 
     def flow(self):
         for action, meta in self.schema:
@@ -139,6 +147,8 @@ class Dialogue:
                         speech = self.music_meta(song)
                         self.speak(speech)
                         self.music(song)
+                        speech = self.music_meta(song, start=False)
+                        self.speak(speech)
                 case "news":
                     category, k = meta
                     speech = self.news(category, k)
@@ -171,7 +181,7 @@ class Dialogue:
             "c": "sieh",
             "d": "dea",
             "e": "ee",
-            "f": "eff",
+            "f": "F.",
             "g": "jie",
             "h": "edge",
             "i": "eye",
@@ -205,14 +215,16 @@ class Dialogue:
         }
         # Regex from https://stackoverflow.com/a/53149449 by SQB
         # Licensed under CC BY-SA 4.0
-        acronyms = re.findall("\\b[A-Z](?:[\\.&]?[A-Z]){1,7}\\b", speech)
+        acronyms = re.findall("\\b[A-Z](?:[\\.&]?[A-Z]){0,7}\\b", speech)
         for acronym in acronyms:
             cleaned_up = acronym.replace(".", "")
             pronounce = str()
             for alphabet in cleaned_up:
                 pronounce += abbreviations[alphabet.lower()] + " "
-            speech = speech.replace(acronym, pronounce)
-        return english_cleaners(speech.replace("..", ".").replace("’", "'"))
+            speech = speech.replace(acronym, pronounce).replace(".", "")
+        return english_cleaners(
+            speech.replace("..", ".").replace("’", "'").replace(".,", ",")
+        )
 
     def speak(self, speech):
         if speech == None:
@@ -236,7 +248,7 @@ class Dialogue:
                 "--model_name",
                 "tts_models/en/vctk/vits",
                 "--speaker_idx",
-                "p234",
+                "p267",
                 "--out_path",
                 f"./temp/a{self.index}.wav",
             ]
