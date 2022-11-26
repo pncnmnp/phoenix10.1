@@ -23,13 +23,15 @@ import ytmdl
 
 class Recommend:
     def __init__(self):
-        pass
+        self.ad_prob = 1
+        self.question = None
 
     def news_urls(self, category):
         urls = {
             "world": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
             "business": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
             "technology": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+            "science": "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
         }
         return urls[category]
 
@@ -40,8 +42,31 @@ class Recommend:
             info += [source["title"] + ". " + source["summary"]]
         return info
 
+    def daily_question(self, file="./gpt/daily_question.json", question=True):
+        # Questions from https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts
+        if question:
+            with open(file, "r", encoding="UTF-8") as f:
+                questions = json.load(file)
+                self.question = random.choice(list(questions.keys()))
+                return self.question
+        else:
+            with open(file, "r", encoding="UTF-8") as f:
+                questions = json.load(file)
+                response = random.choice(questions[self.question])
+                return response
+
+    def advertisement(self, file="./gpt/ads.json"):
+        # From https://en.wikipedia.org/wiki/Category:Fictional_companies
+        prob = random.random()
+        if prob <= self.ad_prob:
+            with open(file, "r", encoding="UTF-8") as f:
+                ads = json.load(f)
+            self.ad_prob /= 4
+            return random.choice(ads)
+        return None
+
     def weather(self, location):
-        r = requests.get(f"https://wttr.in/{location}?format=j1", timeout=10)
+        r = requests.get(f"https://wttr.in/{location}?format=j1", timeout=100)
         forecast = r.json()["current_condition"][0]
         rain = r.json()["weather"][0]["hourly"][0]["chanceofrain"]
         summary = {
@@ -58,7 +83,7 @@ class Recommend:
         now = datetime.datetime.now()
         month, day = now.month, now.day
         url = f"https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/{month}/{day}"
-        r = requests.get(url, timeout=10)
+        r = requests.get(url, timeout=100)
         events = [event["text"] for event in r.json()["events"]]
         facts = sorted(events, key=lambda fact: len(fact))[:k]
         return facts
@@ -75,17 +100,17 @@ class Dialogue:
         now = datetime.datetime.now()
         speech = (
             "You are tuning into Phoenix ten point one! "
-            "I am your host Bono. "
-            f"It is {now.hour} {now.minute} in my studio. "
-            "I hope you are having a splendid day so far!"
+            "I am your host Charlie. "
+            f"It is {now.hour} {now.minute} in my studio and "
+            "I hope that you are having a splendid day so far!"
         )
         return speech
 
     def over(self):
         speech = (
-            "And that's it for today's broadcast! ",
-            "Thanks for listening to Phoenix ten point one! ",
-            "Hope you have a great day ahead! ",
+            "And that's it for today's broadcast! "
+            "Thanks for listening to Phoenix ten point one! "
+            "Hope you have a great day ahead! "
         )
         return speech
 
@@ -153,6 +178,8 @@ class Dialogue:
                 case "up":
                     speech = self.wakeup()
                     self.speak(speech, announce=True)
+                    speech = self.rec.advertisement()
+                    self.speak(speech)
                 case "music":
                     for song in meta:
                         speech = self.music_meta(song)
@@ -160,6 +187,8 @@ class Dialogue:
                         self.music(song)
                         speech = self.music_meta(song, start=False)
                         self.speak(speech, announce=True)
+                        speech = self.rec.advertisement()
+                        self.speak(speech)
                 case "news":
                     category, k = meta
                     speech = self.news(category, k)
@@ -190,7 +219,7 @@ class Dialogue:
 
     def cleaner(self, speech):
         abbreviations = {
-            "a": "ay",
+            "a": "ae",
             "b": "bee",
             "c": "sieh",
             "d": "dea",
@@ -275,7 +304,7 @@ class Dialogue:
         background = AudioSegment.from_wav(file)
         background -= 25  # reduce the volume
         speech = AudioSegment.from_wav(f"./temp/a{self.index - 1}.wav")
-        imposed = background[: speech.duration_seconds * 1000 + 3000].overlay(speech)
+        imposed = background.overlay(speech, position=4000)
         imposed.export(f"./temp/a{self.index - 1}.wav", format="wav")
 
     def silence(self):
