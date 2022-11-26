@@ -6,16 +6,23 @@ import glob
 import json
 import random
 import re
-import subprocess
 import os
+from pathlib import Path
+
 
 import feedparser
 import ffmpy
 import nltk
 from pydub import AudioSegment
 import requests
-from TTS.tts.utils.text.cleaners import english_cleaners
 import ytmdl
+
+from TTS import __file__ as tts_path
+from TTS.tts.utils.text.cleaners import english_cleaners
+from TTS.utils.manage import ModelManager
+from TTS.utils.synthesizer import Synthesizer
+from TTS.server.server import create_argparser
+
 
 # Dependencies
 # nltk.download("punkt")
@@ -107,6 +114,7 @@ class Recommend:
 class Dialogue:
     def __init__(self, file="./schema.json"):
         self.rec = Recommend()
+        self.synthesizer = self.init_speech()
         with open(file, "r", encoding="UTF-8") as f:
             self.schema = json.load(f)
         self.index = 0
@@ -351,21 +359,33 @@ class Dialogue:
         no_audio.export(f"./temp/a{self.index}.wav", format="wav")
         self.index += 1
 
-    def save_speech(self, text):
-        subprocess.run(
-            [
-                "tts",
-                "--text",
-                text,
-                "--model_name",
-                "tts_models/en/vctk/vits",
-                "--speaker_idx",
-                "p267",
-                "--out_path",
-                f"./temp/a{self.index}.wav",
-            ],
-            check=False,
+    def init_speech(self):
+        args = create_argparser().parse_args()
+        args.model_name = "tts_models/en/vctk/vits"
+        path = Path(tts_path).parent / "./.models.json"
+        manager = ModelManager(path)
+        model_path, config_path, model_item = manager.download_model(args.model_name)
+        args.vocoder_name = (
+            model_item["default_vocoder"]
+            if args.vocoder_name is None
+            else args.vocoder_name
         )
+        synthesizer = Synthesizer(
+            tts_checkpoint=model_path,
+            tts_config_path=config_path,
+            tts_speakers_file=None,
+            tts_languages_file=None,
+            vocoder_checkpoint=None,
+            vocoder_config=None,
+            encoder_checkpoint="",
+            encoder_config="",
+            use_cuda=args.use_cuda,
+        )
+        return synthesizer
+
+    def save_speech(self, text):
+        wavs = self.synthesizer.tts(text, speaker_name="p267", style_wav="")
+        self.synthesizer.save_wav(wavs, f"./temp/a{self.index}.wav")
         self.index += 1
 
 
