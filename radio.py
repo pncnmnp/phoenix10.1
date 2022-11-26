@@ -42,17 +42,32 @@ class Recommend:
             info += [source["title"] + ". " + source["summary"]]
         return info
 
+    def person(
+        self,
+        fname="./data/fnames.txt",
+        lname="./data/lnames.txt",
+        locdata="./data/locdata.txt",
+    ):
+        with open(fname, "r", encoding="UTF-8") as f:
+            first = random.choice(f.readlines()).strip()
+        with open(lname, "r", encoding="UTF-8") as f:
+            last = random.choice(f.readlines()).strip()
+        with open(locdata, "r", encoding="UTF-8") as f:
+            loc = random.choice(f.readlines()).strip().split(" ")[0]
+        return first, last, loc
+
     def daily_question(self, file="./gpt/daily_question.json", question=True):
         # Questions from https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts
         if question:
             with open(file, "r", encoding="UTF-8") as f:
-                questions = json.load(file)
+                questions = json.load(f)
                 self.question = random.choice(list(questions.keys()))
                 return self.question
         else:
             with open(file, "r", encoding="UTF-8") as f:
-                questions = json.load(file)
+                questions = json.load(f)
                 response = random.choice(questions[self.question])
+                self.question = False  # indicates that question has been answered
                 return response
 
     def advertisement(self, file="./gpt/ads.json"):
@@ -106,11 +121,35 @@ class Dialogue:
         )
         return speech
 
+    def sprinkle_gpt(self):
+        speech = self.rec.advertisement()
+        if speech is not None:
+            return speech
+        if self.rec.question is None:
+            ques = self.rec.daily_question()
+            speech = (
+                "And now it is time for today's daily question! "
+                f"Are you Ready? Alright! Today's question is - {ques} "
+                "You can post your answers on Twitter, hashtag phoenix ten point one, "
+                "and we will read it on air. "
+            )
+            return speech
+        if self.rec.question:
+            ans = self.rec.daily_question(question=False)
+            fname, lname, loc = self.rec.person()
+            speech = (
+                "Wow! Seems like your answers to our daily question are rolling in. "
+                f"My favorite is from {fname} {lname} from {loc}. "
+                f"They say that - {ans}"
+                f" That was a fun one! Thank you {fname}! "
+            )
+            return speech
+
     def over(self):
         speech = (
             "And that's it for today's broadcast! "
             "Thanks for listening to Phoenix ten point one! "
-            "Hope you have a great day ahead! "
+            "Hope you have a great day ahead! Bye Bye! "
         )
         return speech
 
@@ -178,7 +217,7 @@ class Dialogue:
                 case "up":
                     speech = self.wakeup()
                     self.speak(speech, announce=True)
-                    speech = self.rec.advertisement()
+                    speech = self.sprinkle_gpt()
                     self.speak(speech)
                 case "music":
                     for song in meta:
@@ -187,7 +226,7 @@ class Dialogue:
                         self.music(song)
                         speech = self.music_meta(song, start=False)
                         self.speak(speech, announce=True)
-                        speech = self.rec.advertisement()
+                        speech = self.sprinkle_gpt()
                         self.speak(speech)
                 case "news":
                     category, k = meta
@@ -300,7 +339,7 @@ class Dialogue:
             os.remove(src)
             os.rename(dest, src)
 
-    def background_music(self, file="loboloco.wav"):
+    def background_music(self, file="./data/loboloco.wav"):
         background = AudioSegment.from_wav(file)
         background -= 25  # reduce the volume
         speech = AudioSegment.from_wav(f"./temp/a{self.index - 1}.wav")
