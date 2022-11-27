@@ -40,8 +40,8 @@ class Recommend:
     def __init__(self, rss_f="./rss.json"):
         self.ad_prob = 1
         self.question = None
-        with open(rss_f, "r", encoding="UTF-8") as f:
-            self.rss_urls = json.load(f)
+        with open(rss_f, "r", encoding="UTF-8") as file:
+            self.rss_urls = json.load(file)
 
     def news(self, category="world", k=5):
         """
@@ -63,12 +63,12 @@ class Recommend:
         Provides a random identity - first name, last name, and place of residence
         Uses data from Linux's rig utility
         """
-        with open(fname, "r", encoding="UTF-8") as f:
-            first = random.choice(f.readlines()).strip()
-        with open(lname, "r", encoding="UTF-8") as f:
-            last = random.choice(f.readlines()).strip()
-        with open(locdata, "r", encoding="UTF-8") as f:
-            loc = random.choice(f.readlines()).strip().split(" ")[0]
+        with open(fname, "r", encoding="UTF-8") as file:
+            first = random.choice(file.readlines()).strip()
+        with open(lname, "r", encoding="UTF-8") as file:
+            last = random.choice(file.readlines()).strip()
+        with open(locdata, "r", encoding="UTF-8") as file:
+            loc = random.choice(file.readlines()).strip().split(" ")[0]
         return first, last, loc
 
     def daily_question(self, file="./data/gpt/daily_question.json", question=True):
@@ -78,13 +78,13 @@ class Recommend:
         Responses are from character.ai which seems to be using a variant of LaMDA
         """
         if question:
-            with open(file, "r", encoding="UTF-8") as f:
-                questions = json.load(f)
+            with open(file, "r", encoding="UTF-8") as file:
+                questions = json.load(file)
                 self.question = random.choice(list(questions.keys()))
                 return self.question
         else:
-            with open(file, "r", encoding="UTF-8") as f:
-                questions = json.load(f)
+            with open(file, "r", encoding="UTF-8") as file:
+                questions = json.load(file)
                 response = random.choice(questions[self.question])
                 self.question = False  # indicates that question has been answered
                 return response
@@ -100,8 +100,8 @@ class Recommend:
         # From
         prob = random.random()
         if prob <= self.ad_prob:
-            with open(file, "r", encoding="UTF-8") as f:
-                ads = json.load(f)
+            with open(file, "r", encoding="UTF-8") as file:
+                ads = json.load(file)
             self.ad_prob /= 4
             return random.choice(ads)
         return None
@@ -110,9 +110,9 @@ class Recommend:
         """
         Fetches weather forecast
         """
-        r = requests.get(f"https://wttr.in/{location}?format=j1", timeout=100)
-        forecast = r.json()["current_condition"][0]
-        rain = r.json()["weather"][0]["hourly"][0]["chanceofrain"]
+        req = requests.get(f"https://wttr.in/{location}?format=j1", timeout=100)
+        forecast = req.json()["current_condition"][0]
+        rain = req.json()["weather"][0]["hourly"][0]["chanceofrain"]
         summary = {
             "weather": forecast["weatherDesc"][0]["value"],
             "c": forecast["temp_C"],
@@ -130,8 +130,8 @@ class Recommend:
         now = datetime.datetime.now()
         month, day = now.month, now.day
         url = f"https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/{month}/{day}"
-        r = requests.get(url, timeout=100)
-        events = [event["text"] for event in r.json()["events"]]
+        req = requests.get(url, timeout=100)
+        events = [event["text"] for event in req.json()["events"]]
         facts = sorted(events, key=lambda fact: len(fact))[:k]
         return facts
 
@@ -145,10 +145,10 @@ class Dialogue:
     def __init__(self, schema_f="./data/schema.json", phones_f="./data/phones.json"):
         self.rec = Recommend()
         self.synthesizer = self.init_speech()
-        with open(schema_f, "r", encoding="UTF-8") as f:
-            self.schema = json.load(f)
-        with open(phones_f, "r", encoding="UTF-8") as f:
-            self.phones = json.load(f)
+        with open(schema_f, "r", encoding="UTF-8") as file:
+            self.schema = json.load(file)
+        with open(phones_f, "r", encoding="UTF-8") as file:
+            self.phones = json.load(file)
         self.index = 0
         # Used to store intermediate audio clips
         self.audio_dir = "./" + uuid.uuid4().hex[:10]
@@ -468,7 +468,7 @@ class Dialogue:
         Synthesizes the text and saves it
         Speaker p267 was chosen after a thorough search through Coqui-ai's tts models
         As Coqui-ai lacks models which can generate emotions,
-        the sound is a bit monotonic. 
+        the sound is a bit monotonic.
         To mitigate this, it is nice to have a deep voice.
         """
         wavs = self.synthesizer.tts(text, speaker_name="p267", style_wav="")
