@@ -13,10 +13,10 @@ import datetime
 import glob
 import json
 import random
-import re
-import uuid
 import os
 from pathlib import Path
+import re
+import uuid
 
 from feedparser import parse
 from ffmpy import FFmpeg
@@ -25,14 +25,14 @@ from pydub import AudioSegment
 import requests
 import ytmdl
 
-from TTS import __file__ as tts_path
+from TTS.server.server import create_argparser
 from TTS.tts.utils.text.cleaners import english_cleaners
 from TTS.utils.manage import ModelManager
 from TTS.utils.synthesizer import Synthesizer
-from TTS.server.server import create_argparser
+from TTS import __file__ as tts_path
 
-with open("./config.json", "r", encoding="UTF-8") as file:
-    CONF = json.load(file)
+with open("./config.json", "r", encoding="UTF-8") as conf_file:
+    CONF = json.load(conf_file)
 
 
 class Recommend:
@@ -58,7 +58,8 @@ class Recommend:
 
     def person(self):
         """
-        Provides a random identity - first name, last name, and place of residence
+        Provides a random identity -
+            first name, last name, and place of residence
         Uses data from Linux's rig utility
         """
         with open(CONF["fname"], "r", encoding="UTF-8") as file:
@@ -72,8 +73,9 @@ class Recommend:
     def daily_question(self, question=True):
         """
         Recommends a daily question and provides a realistic response
-        Questions are from https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts
-        Responses are from character.ai which seems to be using a variant of LaMDA
+        Questions from
+            https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts
+        Responses from character.ai which seems to be using a variant of LaMDA
         """
         if question:
             with open(CONF["daily_ques"], "r", encoding="UTF-8") as file:
@@ -84,16 +86,19 @@ class Recommend:
             with open(CONF["daily_ques"], "r", encoding="UTF-8") as file:
                 questions = json.load(file)
                 response = random.choice(questions[self.question])
-                self.question = False  # indicates that question has been answered
+                # indicates that question has been answered
+                self.question = False
                 return response
 
     def advertisement(self):
         """
         Generates an advertisement
-        Company names are fictional - https://en.wikipedia.org/wiki/Category:Fictional_companies
+        Company names are fictional -
+            https://en.wikipedia.org/wiki/Category:Fictional_companies
         GPT-2 was used to generate the responses
         GPT-2 phrase used was -
-            Today's broadcast is sponsered by {company}. {company} is a {category} that is
+            Today's broadcast is sponsered by {company}.
+            {company} is a {category} that is _
         """
         # From
         prob = random.random()
