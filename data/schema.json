@@ -1,0 +1,11 @@
+[
+    ["up", null],
+    ["music", ["SONG_1"]],
+    ["weather", "Raleigh"],
+    ["news", ["business", 5]],
+    ["music", ["SONG_2", "SONG_3", "SONG_4"]],
+    ["news", ["technology", 5]],
+    ["music", ["SONG_4"]],
+    ["fun", null],
+    ["end", null]
+]
