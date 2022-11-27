@@ -106,8 +106,9 @@ class Recommend:
             with open(CONF["ads"], "r", encoding="UTF-8") as file:
                 ads = json.load(file)
             self.ad_prob /= 4
-            return random.choice(ads)
-        return None
+            company = random.choice(list(ads.keys()))
+            return company, ads[company]
+        return None, None
 
     def weather(self, location):
         """
@@ -163,10 +164,11 @@ class Dialogue:
         """
         now = datetime.datetime.now()
         period = "PM" if now.hour > 12 else "AM"
+        hour = now.hour - 12 if now.hour > 12 else now.hour
         speech = (
             "You are tuning into Phoenix ten point one! "
             "I am your host Charlie. "
-            f"It is {now.hour - 12} {now.minute} {period} in my studio and "
+            f"It is {hour} {now.minute} {period} in my studio and "
             "I hope that you are having a splendid day so far!"
         )
         return speech
@@ -175,9 +177,10 @@ class Dialogue:
         """
         Speech for advertisement and daily questions
         """
-        speech = self.rec.advertisement()
+        speech, company = self.rec.advertisement()
         if speech is not None:
-            return speech
+            end = f"Thank you {company} for sponsoring today's broadcast. "
+            return speech + end
         if self.rec.question is None:
             ques = self.rec.daily_question()
             speech = (
