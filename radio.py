@@ -1,5 +1,13 @@
-# Note: brew install ffmpeg
-# Note: brew install espeak
+"""
+A private radio station with a personalized radio jockey
+Author: Parth Parikh (parthparikh1999p@gmail.com)
+"""
+
+# External dependencies required for the code below:
+#   brew install ffmpeg
+#   brew install espeak
+# For sentence tokenization
+#   nltk.download("punkt")
 
 import datetime
 import glob
@@ -10,10 +18,9 @@ import uuid
 import os
 from pathlib import Path
 
-
-import feedparser
-import ffmpy
-import nltk
+from feedparser import parse
+from ffmpy import FFmpeg
+from nltk import sent_tokenize
 from pydub import AudioSegment
 import requests
 import ytmdl
@@ -25,11 +32,11 @@ from TTS.utils.synthesizer import Synthesizer
 from TTS.server.server import create_argparser
 
 
-# Dependencies
-# nltk.download("punkt")
-
-
 class Recommend:
+    """
+    Recommends content for the radio jockey
+    """
+
     def __init__(self, rss_f="./rss.json"):
         self.ad_prob = 1
         self.question = None
@@ -37,7 +44,10 @@ class Recommend:
             self.rss_urls = json.load(f)
 
     def news(self, category="world", k=5):
-        paper = feedparser.parse(self.rss_urls[category])
+        """
+        Recommends news based on the news category
+        """
+        paper = parse(self.rss_urls[category])
         info = []
         for source in paper.entries[:k]:
             info += [source["title"] + ". " + source["summary"]]
@@ -49,6 +59,10 @@ class Recommend:
         lname="./data/lnames.txt",
         locdata="./data/locdata.txt",
     ):
+        """
+        Provides a random identity - first name, last name, and place of residence
+        Uses data from Linux's rig utility
+        """
         with open(fname, "r", encoding="UTF-8") as f:
             first = random.choice(f.readlines()).strip()
         with open(lname, "r", encoding="UTF-8") as f:
@@ -58,7 +72,11 @@ class Recommend:
         return first, last, loc
 
     def daily_question(self, file="./data/gpt/daily_question.json", question=True):
-        # Questions from https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts
+        """
+        Recommends a daily question and provides a realistic response
+        Questions are from https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts
+        Responses are from character.ai which seems to be using a variant of LaMDA
+        """
         if question:
             with open(file, "r", encoding="UTF-8") as f:
                 questions = json.load(f)
@@ -72,7 +90,14 @@ class Recommend:
                 return response
 
     def advertisement(self, file="./data/gpt/ads.json"):
-        # From https://en.wikipedia.org/wiki/Category:Fictional_companies
+        """
+        Generates an advertisement
+        Company names are fictional - https://en.wikipedia.org/wiki/Category:Fictional_companies
+        GPT-2 was used to generate the responses
+        GPT-2 phrase used was -
+            Today's broadcast is sponsered by {company}. {company} is a {category} that is
+        """
+        # From
         prob = random.random()
         if prob <= self.ad_prob:
             with open(file, "r", encoding="UTF-8") as f:
@@ -82,6 +107,9 @@ class Recommend:
         return None
 
     def weather(self, location):
+        """
+        Fetches weather forecast
+        """
         r = requests.get(f"https://wttr.in/{location}?format=j1", timeout=100)
         forecast = r.json()["current_condition"][0]
         rain = r.json()["weather"][0]["hourly"][0]["chanceofrain"]
@@ -96,6 +124,9 @@ class Recommend:
         return summary
 
     def on_this_day(self, k=5):
+        """
+        Recommends an "On this day ....." using Wikipedia's MediaWiki API
+        """
         now = datetime.datetime.now()
         month, day = now.month, now.day
         url = f"https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/{month}/{day}"
@@ -106,7 +137,12 @@ class Recommend:
 
 
 class Dialogue:
-    def __init__(self, schema_f="./schema.json", phones_f="./data/phones.json"):
+    """
+    Generates and synthesizes speech for the radio jockey
+    Also, fetches music and its metadata
+    """
+
+    def __init__(self, schema_f="./data/schema.json", phones_f="./data/phones.json"):
         self.rec = Recommend()
         self.synthesizer = self.init_speech()
         with open(schema_f, "r", encoding="UTF-8") as f:
@@ -119,6 +155,9 @@ class Dialogue:
         os.makedirs(self.audio_dir)
 
     def wakeup(self):
+        """
+        Routine to start the radio broadcast
+        """
         now = datetime.datetime.now()
         period = "PM" if now.hour > 12 else "AM"
         speech = (
@@ -130,6 +169,9 @@ class Dialogue:
         return speech
 
     def sprinkle_gpt(self):
+        """
+        Speech for advertisement and daily questions
+        """
         speech = self.rec.advertisement()
         if speech is not None:
             return speech
@@ -154,6 +196,9 @@ class Dialogue:
             return speech
 
     def over(self):
+        """
+        Routine to end the broadcast
+        """
         speech = (
             "And that's it for today's broadcast! "
             "Thanks for listening to Phoenix ten point one! "
@@ -162,6 +207,9 @@ class Dialogue:
         return speech
 
     def news(self, category, k):
+        """
+        Speech to convey the daily news for a specific category
+        """
         articles = self.rec.news(category, k)
         start = f"Now for today's {category} news. "
         end = f"And that's the {category} news."
@@ -173,6 +221,9 @@ class Dialogue:
         return speech[: -len(filler[(choice_index - 1) % len(filler)])] + end
 
     def weather(self, location):
+        """
+        Speech for the weather forecast
+        """
         forecast = self.rec.weather(location)
         speech = (
             f'It seems like the weather today in {location} is going to be {forecast["weather"]}. '
@@ -185,11 +236,17 @@ class Dialogue:
         return speech
 
     def on_this_day(self):
+        """
+        Speech for the "On this day....." segment
+        """
         fact = random.choice(self.rec.on_this_day(5))
         speech = f"Fun fact! On this day {fact}"
         return speech
 
     def music(self, song):
+        """
+        Fetches a song
+        """
         args = ytmdl.main.arguments()
         args.SONG_NAME = [song]
         args.choice = 1
@@ -206,6 +263,11 @@ class Dialogue:
         self.index += 1
 
     def music_meta(self, song, start=True):
+        """
+        Fetches meta data for a song
+        NOTE: This is a tough problem to solve as the users only enter the
+            song name. Currently, it fetches the first song. Needs improvement!
+        """
         info = ytmdl.metadata.get_from_itunes(song)[0].json
         if start:
             speech = (
@@ -221,6 +283,11 @@ class Dialogue:
             return speech
 
     def flow(self):
+        """
+        Generates the entire broadcast
+        This includes generating segments, synthesizing it, merging it into
+        one mp3, and cleaning up the temporary files
+        """
         for action, meta in self.schema:
             speech = None
             if action == "up":
@@ -255,6 +322,9 @@ class Dialogue:
         return 0
 
     def radio(self):
+        """
+        Merges all the audio segments into one wav file
+        """
         infiles = [
             AudioSegment.from_file(f"{self.audio_dir}/a{i}.wav")
             for i in range(self.index)
@@ -266,13 +336,17 @@ class Dialogue:
         base.export(outfile, format="wav")
 
     def cleanup(self):
+        """
+        Converts the main wav file to mp3 (to compress audio)
+        And removes all the temporary files/dir created
+        """
         src = "radio.wav"
         dest = "radio.mp3"
         # Check if dest exists and delete it
         # as FFmpeg cannot edit existing files in-place
         if Path(dest).is_file():
             os.remove(dest)
-        convert = ffmpy.FFmpeg(
+        convert = FFmpeg(
             inputs={src: None},
             outputs={dest: ["-acodec", "libmp3lame", "-b:a", "128k"]},
         )
@@ -283,6 +357,14 @@ class Dialogue:
             os.remove(f"{self.audio_dir}/a{index}.wav")
 
     def cleaner(self, speech):
+        """
+        Speech cleanup
+        This is a particularly hard problem to solve
+        Presently,
+            abbreviation is expanded into its phones (e.g. ABC => ae bee sieh)
+            some unnecessary symbols are replaced (noticed from trial and error)
+            and all these is passed through Coqui-ai's cleaner
+        """
         acronyms = re.findall("[A-Z](?:[\\.&]?[A-Z]){1,7}[\\.]?|[A-Z][\\.]", speech)
         for acronym in acronyms:
             cleaned_up = acronym.replace(".", "")
@@ -295,9 +377,14 @@ class Dialogue:
         )
 
     def speak(self, speech, announce=False):
+        """
+        Preprocessing before actual tts
+        Text needs to be synthesized in chunks
+            else the tts model has diffulties
+        """
         if speech is None:
             return
-        speeches = nltk.sent_tokenize(speech)
+        speeches = sent_tokenize(speech)
         say = str()
         start_file_index = self.index
         for speech in speeches:
@@ -314,10 +401,14 @@ class Dialogue:
         self.silence()
 
     def slow_it_down(self, start_index):
+        """
+        If speech is not an announcement, it is slowed down a bit
+        This generates clear and audible segments
+        """
         for index in range(start_index, self.index):
             src = f"{self.audio_dir}/a{index}.wav"
             dest = f"{self.audio_dir}/out.wav"
-            slowit = ffmpy.FFmpeg(
+            slowit = FFmpeg(
                 global_options=["-y"],
                 inputs={src: None},
                 outputs={dest: ["-filter:a", "atempo=0.85"]},
@@ -328,6 +419,9 @@ class Dialogue:
             os.rename(dest, src)
 
     def background_music(self, file="./data/loboloco.wav"):
+        """
+        Background music is added during announcements
+        """
         background = AudioSegment.from_wav(file)
         background -= 25  # reduce the volume
         speech = AudioSegment.from_wav(f"{self.audio_dir}/a{self.index - 1}.wav")
@@ -335,11 +429,17 @@ class Dialogue:
         imposed.export(f"{self.audio_dir}/a{self.index - 1}.wav", format="wav")
 
     def silence(self):
+        """
+        Important to create distinct pauses between segments
+        """
         no_audio = AudioSegment.silent(duration=2000)
         no_audio.export(f"{self.audio_dir}/a{self.index}.wav", format="wav")
         self.index += 1
 
     def init_speech(self):
+        """
+        Initializes the synthesizer for tts
+        """
         args = create_argparser().parse_args()
         args.model_name = "tts_models/en/vctk/vits"
         path = Path(tts_path).parent / "./.models.json"
@@ -364,6 +464,13 @@ class Dialogue:
         return synthesizer
 
     def save_speech(self, text):
+        """
+        Synthesizes the text and saves it
+        Speaker p267 was chosen after a thorough search through Coqui-ai's tts models
+        As Coqui-ai lacks models which can generate emotions,
+        the sound is a bit monotonic. 
+        To mitigate this, it is nice to have a deep voice.
+        """
         wavs = self.synthesizer.tts(text, speaker_name="p267", style_wav="")
         self.synthesizer.save_wav(wavs, f"{self.audio_dir}/a{self.index}.wav")
         self.index += 1
