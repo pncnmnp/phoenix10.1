@@ -1,0 +1,6 @@
+{
+    "world": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+    "business": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+    "technology": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+    "science": "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml"
+}

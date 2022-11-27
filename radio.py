@@ -30,21 +30,14 @@ from TTS.server.server import create_argparser
 
 
 class Recommend:
-    def __init__(self):
+    def __init__(self, rss_f="./rss.json"):
         self.ad_prob = 1
         self.question = None
-
-    def news_urls(self, category):
-        urls = {
-            "world": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
-            "business": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
-            "technology": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
-            "science": "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
-        }
-        return urls[category]
+        with open(rss_f, "r", encoding="UTF-8") as f:
+            self.rss_urls = json.load(f)
 
     def news(self, category="world", k=5):
-        paper = feedparser.parse(self.news_urls(category))
+        paper = feedparser.parse(self.rss_urls[category])
         info = []
         for source in paper.entries[:k]:
             info += [source["title"] + ". " + source["summary"]]
@@ -183,9 +176,11 @@ class Dialogue:
         forecast = self.rec.weather(location)
         speech = (
             f'It seems like the weather today in {location} is going to be {forecast["weather"]}. '
-            f'Presently, it is {forecast["c"]} degree celcius and {forecast["f"]} degree fahrenheit. '
+            f'Presently, it is {forecast["c"]} degree celcius '
+            f'and {forecast["f"]} degree fahrenheit. '
             f'There seems to be a {forecast["rain"]} percent chance of rain in the next hour. '
-            f'The cloud cover is {forecast["cloudcover"]} percent with a wind speed of {forecast["windspeedKmph"]} kilo-meters per hour. '
+            f'The cloud cover is {forecast["cloudcover"]} percent '
+            f'with a wind speed of {forecast["windspeedKmph"]} kilo-meters per hour. '
         )
         return speech
 
