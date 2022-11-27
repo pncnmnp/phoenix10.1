@@ -114,14 +114,17 @@ class Recommend:
         """
         Fetches weather forecast
         """
-        req = requests.get(f"https://wttr.in/{location}?format=j1", timeout=100)
+        if location is not None:
+            req = requests.get(f"https://wttr.in/{location}?format=j1", timeout=100)
+        else:
+            req = requests.get("https://wttr.in?format=j1", timeout=100)
         forecast = req.json()["current_condition"][0]
-        rain = req.json()["weather"][0]["hourly"][0]["chanceofrain"]
+        next_hour = req.json()["weather"][0]["hourly"][0]["weatherDesc"][0]["value"]
         summary = {
             "weather": forecast["weatherDesc"][0]["value"],
             "c": forecast["temp_C"],
             "f": forecast["temp_F"],
-            "rain": rain,
+            "next_hour": next_hour,
             "cloudcover": forecast["cloudcover"],
             "windspeedKmph": forecast["windspeedKmph"],
         }
@@ -231,11 +234,12 @@ class Dialogue:
         Speech for the weather forecast
         """
         forecast = self.rec.weather(location)
+        loc = location if location is not None else "your region"
         speech = (
-            f'It seems like the weather today in {location} is going to be {forecast["weather"]}. '
+            f'It seems like the weather today in {loc} is going to be {forecast["weather"]}. '
             f'Presently, it is {forecast["c"]} degree celcius '
             f'and {forecast["f"]} degree fahrenheit. '
-            f'There seems to be a {forecast["rain"]} percent chance of rain in the next hour. '
+            f'The next hour is going to be {forecast["next_hour"]}. '
             f'The cloud cover is {forecast["cloudcover"]} percent '
             f'with a wind speed of {forecast["windspeedKmph"]} kilo-meters per hour. '
         )
