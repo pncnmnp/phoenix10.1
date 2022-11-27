@@ -84,4 +84,4 @@ Every software stands on the shoulders of giants, and this is no different!
 * The background music is [Woke up this Morning Theme by Lobo Loco](https://freemusicarchive.org/music/Lobo_Loco/harvest-times/woke-up-this-morning-theme-fma-podcast-suggestion/) and is licensed under a [Attribution-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-sa/4.0/).
 * The questions are from [icebreakers](https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts) which is licensed under MIT License. The responses were manually curated from [character.ai](https://www.character.ai/). From their [TOS](https://beta.character.ai/tos): 
   * As to a user interacting with a Character created by another user or by Character AI, the user who elicits the Generations from a Character owns all rights in those Generations and grants to Character AI a nonexclusive, worldwide, royalty-free, fully paid up, transferable, sublicensable, perpetual, irrevocable license to copy, display, upload, perform, distribute, store, modify and otherwise use any Generations.
-
+* The Logo was generated using Open AI's [Dall-E 2](https://openai.com/dall-e-2/).
