@@ -32,7 +32,7 @@ from TTS.utils.synthesizer import Synthesizer
 from TTS import __file__ as tts_path
 
 with open("./config.json", "r", encoding="UTF-8") as conf_file:
-    CONF = json.load(conf_file)
+    PATH = json.load(conf_file)["PATH"]
 
 
 class Recommend:
@@ -43,7 +43,7 @@ class Recommend:
     def __init__(self):
         self.ad_prob = 1
         self.question = None
-        with open(CONF["rss"], "r", encoding="UTF-8") as file:
+        with open(PATH["rss"], "r", encoding="UTF-8") as file:
             self.rss_urls = json.load(file)
 
     def news(self, category="world", k=5):
@@ -62,11 +62,11 @@ class Recommend:
             first name, last name, and place of residence
         Uses data from Linux's rig utility
         """
-        with open(CONF["fname"], "r", encoding="UTF-8") as file:
+        with open(PATH["fname"], "r", encoding="UTF-8") as file:
             first = random.choice(file.readlines()).strip()
-        with open(CONF["lname"], "r", encoding="UTF-8") as file:
+        with open(PATH["lname"], "r", encoding="UTF-8") as file:
             last = random.choice(file.readlines()).strip()
-        with open(CONF["locdata"], "r", encoding="UTF-8") as file:
+        with open(PATH["locdata"], "r", encoding="UTF-8") as file:
             loc = random.choice(file.readlines()).strip().split(" ")[0]
         return first, last, loc
 
@@ -78,12 +78,12 @@ class Recommend:
         Responses from character.ai which seems to be using a variant of LaMDA
         """
         if question:
-            with open(CONF["daily_ques"], "r", encoding="UTF-8") as file:
+            with open(PATH["daily_ques"], "r", encoding="UTF-8") as file:
                 questions = json.load(file)
                 self.question = random.choice(list(questions.keys()))
                 return self.question
         else:
-            with open(CONF["daily_ques"], "r", encoding="UTF-8") as file:
+            with open(PATH["daily_ques"], "r", encoding="UTF-8") as file:
                 questions = json.load(file)
                 response = random.choice(questions[self.question])
                 # indicates that question has been answered
@@ -103,7 +103,7 @@ class Recommend:
         # From
         prob = random.random()
         if prob <= self.ad_prob:
-            with open(CONF["ads"], "r", encoding="UTF-8") as file:
+            with open(PATH["ads"], "r", encoding="UTF-8") as file:
                 ads = json.load(file)
             self.ad_prob /= 4
             company = random.choice(list(ads.keys()))
@@ -152,9 +152,9 @@ class Dialogue:
     def __init__(self):
         self.rec = Recommend()
         self.synthesizer = self.init_speech()
-        with open(CONF["schema"], "r", encoding="UTF-8") as file:
+        with open(PATH["schema"], "r", encoding="UTF-8") as file:
             self.schema = json.load(file)
-        with open(CONF["phones"], "r", encoding="UTF-8") as file:
+        with open(PATH["phones"], "r", encoding="UTF-8") as file:
             self.phones = json.load(file)
         self.index = 0
         # Used to store intermediate audio clips
@@ -180,9 +180,9 @@ class Dialogue:
         """
         Speech for advertisement and daily questions
         """
-        speech, company = self.rec.advertisement()
+        company, speech = self.rec.advertisement()
         if speech is not None:
-            end = f"Thank you {company} for sponsoring today's broadcast. "
+            end = f" Thank you {company} for sponsoring today's broadcast. "
             return speech + end
         if self.rec.question is None:
             ques = self.rec.daily_question()
@@ -433,7 +433,7 @@ class Dialogue:
         """
         Background music is added during announcements
         """
-        background = AudioSegment.from_wav(CONF["backg_music"])
+        background = AudioSegment.from_wav(PATH["backg_music"])
         background -= 25  # reduce the volume
         speech = AudioSegment.from_wav(f"{self.audio_dir}/a{self.index - 1}.wav")
         imposed = background.overlay(speech, position=4000)
