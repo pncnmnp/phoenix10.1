@@ -228,36 +228,33 @@ class Dialogue:
     def flow(self):
         for action, meta in self.schema:
             speech = None
-            match action:
-                case "up":
-                    speech = self.wakeup()
+            if action == "up":
+                speech = self.wakeup()
+                self.speak(speech, announce=True)
+                speech = self.sprinkle_gpt()
+                self.speak(speech)
+            elif action == "music":
+                for song in meta:
+                    speech = self.music_meta(song)
+                    self.speak(speech, announce=True)
+                    self.music(song)
+                    speech = self.music_meta(song, start=False)
                     self.speak(speech, announce=True)
                     speech = self.sprinkle_gpt()
                     self.speak(speech)
-                case "music":
-                    for song in meta:
-                        speech = self.music_meta(song)
-                        self.speak(speech, announce=True)
-                        self.music(song)
-                        speech = self.music_meta(song, start=False)
-                        self.speak(speech, announce=True)
-                        speech = self.sprinkle_gpt()
-                        self.speak(speech)
-                case "news":
-                    category, k = meta
-                    speech = self.news(category, k)
-                    self.speak(speech)
-                case "weather":
-                    speech = self.weather(meta)
-                    self.speak(speech)
-                case "fun":
-                    speech = self.on_this_day()
-                    self.speak(speech)
-                case "end":
-                    speech = self.over()
-                    self.speak(speech, announce=True)
-                case _:
-                    pass
+            elif action == "news":
+                category, k = meta
+                speech = self.news(category, k)
+                self.speak(speech)
+            elif action == "weather":
+                speech = self.weather(meta)
+                self.speak(speech)
+            elif action == "fun":
+                speech = self.on_this_day()
+                self.speak(speech)
+            elif action == "end":
+                speech = self.over()
+                self.speak(speech, announce=True)
         self.radio()
         self.cleanup()
         return 0
