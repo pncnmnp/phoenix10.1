@@ -58,7 +58,7 @@ Actions available are:
   * broadcasts the news using rss feeds. The rss feeds can be updated in `./data/rss.json`.
   * characteristic should be a list of the format `[category, num_of_news_items]`
 * `fun`
-  * broadcasts a `On this day...` fact
+  * broadcasts a *On this day...* fact
   * characteristic is ignored
 * `end`
   * routine to end the broadcast
@@ -74,7 +74,7 @@ python3 radio.py
 Your entire broadcast would be stored in a `radio.mp3` file.
 
 # License
-The code is licensed under [MIT License](./LICENSE).
+The code is open-sourced under the [MIT License](./LICENSE).
 
 # Acknowledgements
 Every software stands on the shoulders of giants, and this is no different! 
