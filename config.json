@@ -1,0 +1,13 @@
+{
+    "PATH": {
+        "rss": "./data/rss.json",
+        "fname": "./data/fnames.txt",
+        "lname": "./data/lnames.txt",
+        "locdata": "./data/locdata.txt",
+        "daily_ques": "./data/gpt/daily_question.json",
+        "ads": "./data/gpt/ads.json",
+        "schema": "./data/schema.json",
+        "phones": "./data/phones.json",
+        "backg_music": "./data/loboloco.wav"
+    }
+}

@@ -1,5 +1,5 @@
 """
-A private radio station with a personalized radio jockey
+A private radio station with a personalized radio personality
 Author: Parth Parikh (parthparikh1999p@gmail.com)
 """
 
@@ -31,16 +31,19 @@ from TTS.utils.manage import ModelManager
 from TTS.utils.synthesizer import Synthesizer
 from TTS.server.server import create_argparser
 
+with open("./config.json", "r", encoding="UTF-8") as file:
+    CONF = json.load(file)
+
 
 class Recommend:
     """
-    Recommends content for the radio jockey
+    Recommends content for the radio personality
     """
 
-    def __init__(self, rss_f="./rss.json"):
+    def __init__(self):
         self.ad_prob = 1
         self.question = None
-        with open(rss_f, "r", encoding="UTF-8") as file:
+        with open(CONF["rss"], "r", encoding="UTF-8") as file:
             self.rss_urls = json.load(file)
 
     def news(self, category="world", k=5):
@@ -53,43 +56,38 @@ class Recommend:
             info += [source["title"] + ". " + source["summary"]]
         return info
 
-    def person(
-        self,
-        fname="./data/fnames.txt",
-        lname="./data/lnames.txt",
-        locdata="./data/locdata.txt",
-    ):
+    def person(self):
         """
         Provides a random identity - first name, last name, and place of residence
         Uses data from Linux's rig utility
         """
-        with open(fname, "r", encoding="UTF-8") as file:
+        with open(CONF["fname"], "r", encoding="UTF-8") as file:
             first = random.choice(file.readlines()).strip()
-        with open(lname, "r", encoding="UTF-8") as file:
+        with open(CONF["lname"], "r", encoding="UTF-8") as file:
             last = random.choice(file.readlines()).strip()
-        with open(locdata, "r", encoding="UTF-8") as file:
+        with open(CONF["locdata"], "r", encoding="UTF-8") as file:
             loc = random.choice(file.readlines()).strip().split(" ")[0]
         return first, last, loc
 
-    def daily_question(self, file="./data/gpt/daily_question.json", question=True):
+    def daily_question(self, question=True):
         """
         Recommends a daily question and provides a realistic response
         Questions are from https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts
         Responses are from character.ai which seems to be using a variant of LaMDA
         """
         if question:
-            with open(file, "r", encoding="UTF-8") as file:
+            with open(CONF["daily_ques"], "r", encoding="UTF-8") as file:
                 questions = json.load(file)
                 self.question = random.choice(list(questions.keys()))
                 return self.question
         else:
-            with open(file, "r", encoding="UTF-8") as file:
+            with open(CONF["daily_ques"], "r", encoding="UTF-8") as file:
                 questions = json.load(file)
                 response = random.choice(questions[self.question])
                 self.question = False  # indicates that question has been answered
                 return response
 
-    def advertisement(self, file="./data/gpt/ads.json"):
+    def advertisement(self):
         """
         Generates an advertisement
         Company names are fictional - https://en.wikipedia.org/wiki/Category:Fictional_companies
@@ -100,7 +98,7 @@ class Recommend:
         # From
         prob = random.random()
         if prob <= self.ad_prob:
-            with open(file, "r", encoding="UTF-8") as file:
+            with open(CONF["ads"], "r", encoding="UTF-8") as file:
                 ads = json.load(file)
             self.ad_prob /= 4
             return random.choice(ads)
@@ -138,16 +136,16 @@ class Recommend:
 
 class Dialogue:
     """
-    Generates and synthesizes speech for the radio jockey
+    Generates and synthesizes speech for the radio personality
     Also, fetches music and its metadata
     """
 
-    def __init__(self, schema_f="./data/schema.json", phones_f="./data/phones.json"):
+    def __init__(self):
         self.rec = Recommend()
         self.synthesizer = self.init_speech()
-        with open(schema_f, "r", encoding="UTF-8") as file:
+        with open(CONF["schema"], "r", encoding="UTF-8") as file:
             self.schema = json.load(file)
-        with open(phones_f, "r", encoding="UTF-8") as file:
+        with open(CONF["phones"], "r", encoding="UTF-8") as file:
             self.phones = json.load(file)
         self.index = 0
         # Used to store intermediate audio clips
@@ -355,6 +353,7 @@ class Dialogue:
         os.remove(src)
         for index in range(self.index):
             os.remove(f"{self.audio_dir}/a{index}.wav")
+        os.rmdir(f"{self.audio_dir}")
 
     def cleaner(self, speech):
         """
@@ -418,11 +417,11 @@ class Dialogue:
             os.remove(src)
             os.rename(dest, src)
 
-    def background_music(self, file="./data/loboloco.wav"):
+    def background_music(self):
         """
         Background music is added during announcements
         """
-        background = AudioSegment.from_wav(file)
+        background = AudioSegment.from_wav(CONF["backg_music"])
         background -= 25  # reduce the volume
         speech = AudioSegment.from_wav(f"{self.audio_dir}/a{self.index - 1}.wav")
         imposed = background.overlay(speech, position=4000)
