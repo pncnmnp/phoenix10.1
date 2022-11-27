@@ -64,7 +64,7 @@ class Recommend:
             loc = random.choice(f.readlines()).strip().split(" ")[0]
         return first, last, loc
 
-    def daily_question(self, file="./gpt/daily_question.json", question=True):
+    def daily_question(self, file="./data/gpt/daily_question.json", question=True):
         # Questions from https://github.com/ParabolInc/icebreakers/blob/main/lib/api.ts
         if question:
             with open(file, "r", encoding="UTF-8") as f:
@@ -78,7 +78,7 @@ class Recommend:
                 self.question = False  # indicates that question has been answered
                 return response
 
-    def advertisement(self, file="./gpt/ads.json"):
+    def advertisement(self, file="./data/gpt/ads.json"):
         # From https://en.wikipedia.org/wiki/Category:Fictional_companies
         prob = random.random()
         if prob <= self.ad_prob:
