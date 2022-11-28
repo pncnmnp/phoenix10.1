@@ -3,8 +3,8 @@
 
 Phoenix10.1 creates a personalized pre-recorded internet radio that has a text-to-speech based radio jockey.
 
-# Demo
-**[Here's a demo](https://soundcloud.com/parthparikh1999p/demo-of-phoenix101?si=48228b4b654a4e47b07e85fd7365ef32&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing) to understand what it sounds like!**
+# Here's a demo to understand what it sounds like!
+[![Screen Shot 2022-11-27 at 7 14 56 PM](https://user-images.githubusercontent.com/24948340/204167724-856f8d6f-c0d5-4d4a-bc36-cb9af0e13112.png)](https://soundcloud.com/parthparikh1999p/demo-of-phoenix101)
 
 # What can it do?
 This radio jockey can play your requested songs, tell you about the weather, and convey the daily news.
