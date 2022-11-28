@@ -1,7 +1,7 @@
 # Phoenix10.1
 ![Logo of Phoenix10.1 - it is a Phoenix in the sky, disney style](https://user-images.githubusercontent.com/24948340/204136951-3a35b15a-c06c-43ca-b935-dff27651bd79.png)
 
-Phoenix10.1 creates a personalized pre-recorded internet radio that has a text-to-speech based radio jockey.
+Phoenix10.1 creates a software to generate personalized pre-recorded internet radios that has a text-to-speech based radio jockey.
 
 # Here's a demo to understand what it sounds like!
 [![Screen Shot 2022-11-27 at 7 14 56 PM](https://user-images.githubusercontent.com/24948340/204167724-856f8d6f-c0d5-4d4a-bc36-cb9af0e13112.png)](https://soundcloud.com/parthparikh1999p/demo-of-phoenix101)
