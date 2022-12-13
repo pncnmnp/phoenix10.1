@@ -20,6 +20,7 @@ import uuid
 
 from feedparser import parse
 from ffmpy import FFmpeg
+import musicbrainzngs
 from nltk import sent_tokenize
 from pydub import AudioSegment
 import requests
@@ -45,6 +46,9 @@ class Recommend:
         self.question = None
         with open(PATH["rss"], "r", encoding="UTF-8") as file:
             self.rss_urls = json.load(file)
+        musicbrainzngs.set_useragent(
+            "phoenix10.1", "1", "https://github.com/pncnmnp/phoenix10.1"
+        )
 
     def news(self, category="world", k=5):
         """
@@ -55,6 +59,18 @@ class Recommend:
         for source in paper.entries[:k]:
             info += [source["title"] + ". " + source["summary"]]
         return info
+
+    def artist_discography(self, artist_name, N=10):
+        titles = set()
+        for offset in range(0, 200, 25):
+            discography = musicbrainzngs.search_recordings(
+                artistname=artist_name, offset=offset
+            )
+            for record in discography["recording-list"]:
+                titles.add(record["title"])
+        titles = list(titles)
+        random.shuffle(titles)
+        return titles[: int(N)]
 
     def person(self):
         """
@@ -253,12 +269,14 @@ class Dialogue:
         speech = f"Fun fact! On this day {fact}"
         return speech
 
-    def music(self, song):
+    def music(self, song, artist=None):
         """
         Fetches a song
         """
         args = ytmdl.main.arguments()
         args.SONG_NAME = [song]
+        if artist:
+            args.artist = artist
         args.choice = 1
         args.quiet = True
         ytmdl.defaults.DEFAULT.SONG_DIR = self.audio_dir
@@ -272,13 +290,14 @@ class Dialogue:
         os.remove(mp3)
         self.index += 1
 
-    def music_meta(self, song, start=True):
+    def music_meta(self, song, artist=None, start=True):
         """
         Fetches meta data for a song
         NOTE: This is a tough problem to solve as the users only enter the
             song name. Currently, it fetches the first song. Needs improvement!
         """
         info = ytmdl.metadata.get_from_itunes(song)[0].json
+        info["artistName"] = artist if artist else info["artistName"]
         if start:
             speech = (
                 f'The next song is from the world of {info["primaryGenreName"]}. '
@@ -291,6 +310,14 @@ class Dialogue:
                 "You are listening to Phoenix ten point one! "
             )
             return speech
+
+    def curate_discography(self, meta):
+        discography = []
+        for artist, num_songs in meta:
+            songs = self.rec.artist_discography(artist, N=num_songs)
+            discography += [(artist, song) for song in songs]
+        random.shuffle(discography)
+        return discography
 
     def flow(self):
         """
@@ -305,12 +332,16 @@ class Dialogue:
                 self.speak(speech, announce=True)
                 speech = self.sprinkle_gpt()
                 self.speak(speech)
-            elif action == "music":
-                for song in meta:
-                    speech = self.music_meta(song)
+            elif action[:5] == "music":
+                if action == "music-artist":
+                    songs = self.curate_discography(meta)
+                else:
+                    songs = [(None, song) for song in meta]
+                for artist, song in songs:
+                    speech = self.music_meta(song, artist)
                     self.speak(speech, announce=True)
-                    self.music(song)
-                    speech = self.music_meta(song, start=False)
+                    self.music(song, artist)
+                    speech = self.music_meta(song, artist, False)
                     self.speak(speech, announce=True)
                     speech = self.sprinkle_gpt()
                     self.speak(speech)

@@ -1,11 +1,10 @@
 [
     ["up", null],
-    ["music", ["SONG_1"]],
-    ["weather", "Raleigh"],
+    ["music", ["SONG_NAME_1", "SONG_NAME_2"]],
+    ["weather", "Streator"],
+    ["music-artist", [["ARTIST_NAME_1", 2], ["ARTIST_NAME_2", 3]]],
     ["news", ["business", 5]],
-    ["music", ["SONG_2", "SONG_3", "SONG_4"]],
-    ["news", ["technology", 5]],
-    ["music", ["SONG_4"]],
+    ["music-artist", [["ARTIST_NAME_3", 2], ["ARTIST_NAME_4", 1]]],
     ["fun", null],
     ["end", null]
 ]
