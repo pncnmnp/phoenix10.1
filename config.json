@@ -8,6 +8,7 @@
         "ads": "./data/gpt/ads.json",
         "schema": "./data/schema.json",
         "phones": "./data/phones.json",
-        "backg_music": "./data/loboloco.wav"
+        "backg_music": "./data/loboloco.wav",
+        "songdata": "./data/genres.csv"
     }
 }

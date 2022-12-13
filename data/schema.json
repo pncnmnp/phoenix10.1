@@ -4,7 +4,7 @@
     ["weather", "Streator"],
     ["music-artist", [["ARTIST_NAME_1", 2], ["ARTIST_NAME_2", 3]]],
     ["news", ["business", 5]],
-    ["music-artist", [["ARTIST_NAME_3", 2], ["ARTIST_NAME_4", 1]]],
+    ["music-genre", [["GENRE_1", 2], ["GENRE_2", 1]]],
     ["fun", null],
     ["end", null]
 ]

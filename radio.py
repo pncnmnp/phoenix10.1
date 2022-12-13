@@ -22,6 +22,7 @@ from feedparser import parse
 from ffmpy import FFmpeg
 import musicbrainzngs
 from nltk import sent_tokenize
+import pandas as pd
 from pydub import AudioSegment
 import requests
 import ytmdl
@@ -59,6 +60,15 @@ class Recommend:
         for source in paper.entries[:k]:
             info += [source["title"] + ". " + source["summary"]]
         return info
+
+    def playlist_by_genre(self, genre, N=3):
+        songs = pd.read_csv(PATH["songdata"], compression="gzip")
+        by_genre = songs[songs.apply(lambda song: genre in song["tags"], axis=1)]
+        relevant_songs = list(
+            by_genre[["artist_name", "title"]].itertuples(index=False, name=None)
+        )
+        random.shuffle(relevant_songs)
+        return relevant_songs[: int(N)]
 
     def artist_discography(self, artist_name, N=10):
         titles = set()
@@ -311,11 +321,17 @@ class Dialogue:
             )
             return speech
 
-    def curate_discography(self, meta):
+    def curate_discography(self, meta, by_artist=True):
         discography = []
-        for artist, num_songs in meta:
-            songs = self.rec.artist_discography(artist, N=num_songs)
-            discography += [(artist, song) for song in songs]
+        if by_artist == True:
+            for artist, num_songs in meta:
+                songs = self.rec.artist_discography(artist, N=num_songs)
+                discography += [(artist, song) for song in songs]
+        else:
+            # by genre
+            for genre, num_songs in meta:
+                songs = self.rec.playlist_by_genre(genre, N=num_songs)
+                discography += [(artist, song) for artist, song in songs]
         random.shuffle(discography)
         return discography
 
@@ -335,6 +351,8 @@ class Dialogue:
             elif action[:5] == "music":
                 if action == "music-artist":
                     songs = self.curate_discography(meta)
+                elif action == "music-genre":
+                    songs = self.curate_discography(meta, False)
                 else:
                     songs = [(None, song) for song in meta]
                 for artist, song in songs:
