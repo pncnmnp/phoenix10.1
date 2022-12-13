@@ -18,6 +18,7 @@ from pathlib import Path
 import re
 import uuid
 
+import billboard
 from feedparser import parse
 from ffmpy import FFmpeg
 import musicbrainzngs
@@ -135,6 +136,12 @@ class Recommend:
             company = random.choice(list(ads.keys()))
             return company, ads[company]
         return None, None
+
+    def billboard(self, chart, N=3):
+        chart_data = billboard.ChartData(chart)
+        songs = [(song.artist, song.title) for song in chart_data]
+        random.shuffle(songs)
+        return songs[: int(N)]
 
     def weather(self, location):
         """
@@ -321,18 +328,24 @@ class Dialogue:
             )
             return speech
 
-    def curate_discography(self, meta, by_artist=True):
+    def curate_discography(self, action, meta):
         discography = []
-        if by_artist == True:
+        if action == "music-artist":
             for artist, num_songs in meta:
                 songs = self.rec.artist_discography(artist, N=num_songs)
                 discography += [(artist, song) for song in songs]
-        else:
-            # by genre
+        elif action == "music-genre":
             for genre, num_songs in meta:
                 songs = self.rec.playlist_by_genre(genre, N=num_songs)
                 discography += [(artist, song) for artist, song in songs]
-        random.shuffle(discography)
+        elif action == "music-billboard":
+            for chart, num_songs in meta:
+                songs = self.rec.billboard(chart, N=num_songs)
+                discography += songs
+        else:
+            discography = [(None, song) for song in meta]
+        if action[:6] == "music-":
+            random.shuffle(discography)
         return discography
 
     def flow(self):
@@ -349,12 +362,7 @@ class Dialogue:
                 speech = self.sprinkle_gpt()
                 self.speak(speech)
             elif action[:5] == "music":
-                if action == "music-artist":
-                    songs = self.curate_discography(meta)
-                elif action == "music-genre":
-                    songs = self.curate_discography(meta, False)
-                else:
-                    songs = [(None, song) for song in meta]
+                songs = self.curate_discography(action, meta)
                 for artist, song in songs:
                     speech = self.music_meta(song, artist)
                     self.speak(speech, announce=True)
