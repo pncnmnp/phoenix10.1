@@ -53,6 +53,13 @@ Actions available are:
 * `music`
   * fetches and streams music
   * characteristic should contain list of song names
+* `music-artist`
+  * fetches and streams music (based on the artist names)
+  * characteristic should contain **list of lists** of the format `[artist_name, num_of_songs]`
+* `music-genre`
+  * fetches and streams music (based on some specific genres)
+  * characteristic should contain **list of lists** of the format `[genre, num_of_songs]`
+  * [Here is a list of genres supported by Phoenix10.1](https://gist.github.com/pncnmnp/755341a694022c6b8679b1847922c62f).
 * `weather`
   * broadcasts the weather
   * characteristic should contain city name. Use `null` to fetch weather using your IP address.
