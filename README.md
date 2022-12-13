@@ -60,6 +60,9 @@ Actions available are:
   * fetches and streams music (based on some specific genres)
   * characteristic should contain **list of lists** of the format `[genre, num_of_songs]`
   * [Here is a list of genres supported by Phoenix10.1](https://gist.github.com/pncnmnp/755341a694022c6b8679b1847922c62f).
+* `music-billboard`
+  * fetches and streams music [from Billboard charts](https://www.billboard.com/charts/)
+  * characteristic should contain **list of lists** of the format `[chart_name, num_of_songs]`
 * `weather`
   * broadcasts the weather
   * characteristic should contain city name. Use `null` to fetch weather using your IP address.
