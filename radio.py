@@ -62,16 +62,24 @@ class Recommend:
             info += [source["title"] + ". " + source["summary"]]
         return info
 
-    def playlist_by_genre(self, genre, N=3):
+    def playlist_by_genre(self, genre, num_songs=3):
+        """
+        Recommends music given a genre
+        List of genres supported:
+            https://gist.github.com/pncnmnp/755341a694022c6b8679b1847922c62f
+        """
         songs = pd.read_csv(PATH["songdata"], compression="gzip")
         by_genre = songs[songs.apply(lambda song: genre in song["tags"], axis=1)]
         relevant_songs = list(
             by_genre[["artist_name", "title"]].itertuples(index=False, name=None)
         )
         random.shuffle(relevant_songs)
-        return relevant_songs[: int(N)]
+        return relevant_songs[: int(num_songs)]
 
-    def artist_discography(self, artist_name, N=10):
+    def artist_discography(self, artist_name, num_songs=10):
+        """
+        Recommends music given an artist name
+        """
         titles = set()
         for offset in range(0, 200, 25):
             discography = musicbrainzngs.search_recordings(
@@ -81,7 +89,16 @@ class Recommend:
                 titles.add(record["title"])
         titles = list(titles)
         random.shuffle(titles)
-        return titles[: int(N)]
+        return titles[: int(num_songs)]
+
+    def billboard(self, chart, num_songs=3):
+        """
+        Recommends music given a Billboard chart
+        """
+        chart_data = billboard.ChartData(chart)
+        songs = [(song.artist, song.title) for song in chart_data]
+        random.shuffle(songs)
+        return songs[: int(num_songs)]
 
     def person(self):
         """
@@ -136,12 +153,6 @@ class Recommend:
             company = random.choice(list(ads.keys()))
             return company, ads[company]
         return None, None
-
-    def billboard(self, chart, N=3):
-        chart_data = billboard.ChartData(chart)
-        songs = [(song.artist, song.title) for song in chart_data]
-        random.shuffle(songs)
-        return songs[: int(N)]
 
     def weather(self, location):
         """
@@ -329,18 +340,21 @@ class Dialogue:
             return speech
 
     def curate_discography(self, action, meta):
+        """
+        Generates a discography where each element is (artist name, song)
+        """
         discography = []
         if action == "music-artist":
             for artist, num_songs in meta:
-                songs = self.rec.artist_discography(artist, N=num_songs)
+                songs = self.rec.artist_discography(artist, num_songs)
                 discography += [(artist, song) for song in songs]
         elif action == "music-genre":
             for genre, num_songs in meta:
-                songs = self.rec.playlist_by_genre(genre, N=num_songs)
+                songs = self.rec.playlist_by_genre(genre, num_songs)
                 discography += [(artist, song) for artist, song in songs]
         elif action == "music-billboard":
             for chart, num_songs in meta:
-                songs = self.rec.billboard(chart, N=num_songs)
+                songs = self.rec.billboard(chart, num_songs)
                 discography += songs
         else:
             discography = [(None, song) for song in meta]
