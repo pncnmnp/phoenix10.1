@@ -7,6 +7,7 @@ import json
 from feedparser.util import FeedParserDict
 from billboard import ChartEntry
 from requests.models import Response
+from itunespy.track import Track
 
 
 class Test_Recommend(unittest.TestCase):
@@ -214,3 +215,85 @@ class Test_Dialogue(unittest.TestCase):
         speech = dialogue.on_this_day()
         self.assertEqual(mock_on_this_day.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.ytmdl.metadata.get_from_itunes")
+    def test_music_meta_start(self, mock_get_from_itunes):
+        mock_get_from_itunes.return_value = [
+            Track(
+                json={
+                    "artistName": "Artist 1",
+                    "trackName": "Track 1",
+                    "primaryGenreName": "Genre 1",
+                }
+            )
+        ]
+        dialogue = Dialogue()
+        speech = dialogue.music_meta("Song 1", artist=None, start=True)
+        self.assertEqual(mock_get_from_itunes.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.ytmdl.metadata.get_from_itunes")
+    def test_music_meta_no_start(self, mock_get_from_itunes):
+        mock_get_from_itunes.return_value = [
+            Track(
+                json={
+                    "artistName": "Artist 1",
+                    "trackName": "Track 1",
+                    "primaryGenreName": "Genre 1",
+                }
+            )
+        ]
+        dialogue = Dialogue()
+        speech = dialogue.music_meta("Song 1", artist=None, start=False)
+        self.assertEqual(mock_get_from_itunes.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.Recommend.artist_discography")
+    def test_curate_discography_artist(self, mock_artist_discography):
+        mock_artist_discography.return_value = [
+            "Song",
+        ]
+        dialogue = Dialogue()
+        meta = [("Artist 1", 1), ("Artist 2", 1)]
+        songs = dialogue.curate_discography(action="music-artist", meta=meta)
+        self.assertEqual(mock_artist_discography.call_count, 2)
+        self.assertEqual(len(songs), 2)
+
+    @patch("radio.Recommend.playlist_by_genre")
+    def test_curate_discography_genre(self, mock_playlist_by_genre):
+        mock_playlist_by_genre.return_value = [
+            ("Artist", "Song"),
+        ]
+        dialogue = Dialogue()
+        meta = [("Genre 1", 1), ("Genre 2", 1)]
+        songs = dialogue.curate_discography(action="music-genre", meta=meta)
+        self.assertEqual(mock_playlist_by_genre.call_count, 2)
+        self.assertEqual(len(songs), 2)
+
+    @patch("radio.Recommend.billboard")
+    def test_curate_discography_billboard(self, mock_billboard):
+        mock_billboard.return_value = [
+            ("Artist", "Song"),
+        ]
+        dialogue = Dialogue()
+        meta = [("Chart 1", 1), ("Chart 2", 1)]
+        songs = dialogue.curate_discography(action="music-billboard", meta=meta)
+        self.assertEqual(mock_billboard.call_count, 2)
+        self.assertEqual(len(songs), 2)
+
+    def test_curate_discography_default(self):
+        dialogue = Dialogue()
+        meta = ["Song 1", "Song 2"]
+        songs = dialogue.curate_discography(action="music", meta=meta)
+        self.assertEqual(len(songs), 2)
+
+    @patch("radio.english_cleaners")
+    def test_cleaner(self, mock_english_cleaners):
+        def side_effect(arg):
+            return arg
+
+        mock_english_cleaners.side_effect = side_effect
+        dialogue = Dialogue()
+        cleaned = dialogue.cleaner("ABC")
+        self.assertEqual(mock_english_cleaners.call_count, 1)
+        self.assertEqual(cleaned, "ae bee sieh ")
