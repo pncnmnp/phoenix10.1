@@ -21,6 +21,7 @@ To install them on Linux (Debain-based):
 ```bash
 sudo apt-get install ffmpeg espeak
 ```
+For Windows users, to setup and use `ffmpeg`, [follow this guide from Stack Exchange](https://video.stackexchange.com/questions/20495/how-do-i-set-up-and-use-ffmpeg-in-windows). Moreover, to setup `espeak`, [use this tutorial from Stack Overflow](https://stackoverflow.com/questions/17547531/how-to-use-espeak-with-python).
 
 To install the Python dependencies, use:
 ```bash
