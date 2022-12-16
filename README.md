@@ -75,8 +75,11 @@ Actions available are:
 * `end`
   * routine to end the broadcast
   * characteristic is ignored
+* `no-ads`
+  * removes fictional advertisements from the broadcast. This action should come before `up`
+  * characteristic value is ignored
 
-As of yet, the fictional advertisements and daily QnA cannot be configured and are present in every broadcast.
+As of yet, the daily QnA cannot be configured and is present in every broadcast.
 
 # Run
 Once `schema.json` is configured, run the software using:
