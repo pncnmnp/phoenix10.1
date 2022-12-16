@@ -1,6 +1,6 @@
 import unittest
 from mock import patch
-from radio import Recommend
+from radio import Recommend, Dialogue
 
 import json
 
@@ -136,3 +136,81 @@ class Test_Recommend(unittest.TestCase):
         self.assertEqual(mock_get.call_count, 1)
         self.assertNotEqual(facts, None)
         self.assertEqual(len(facts), 2)
+
+
+class Test_Dialogue(unittest.TestCase):
+    def test_wakeup(self):
+        dialogue = Dialogue()
+        speech = dialogue.wakeup()
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.Recommend.advertisement")
+    def test_sprinkle_gpt_speech(self, mock_advertisement):
+        mock_advertisement.return_value = ("Company Name", "Speech 1")
+        dialogue = Dialogue()
+        speech = dialogue.sprinkle_gpt()
+        self.assertEqual(mock_advertisement.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.Recommend.advertisement")
+    @patch("radio.Recommend.daily_question")
+    def test_sprinkle_gpt_question(self, mock_daily_question, mock_advertisement):
+        mock_advertisement.return_value = ("Company Name", None)
+        mock_daily_question.return_value = "Question 1"
+        dialogue = Dialogue()
+        speech = dialogue.sprinkle_gpt()
+        self.assertEqual(mock_advertisement.call_count, 1)
+        self.assertEqual(mock_daily_question.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.Recommend.advertisement")
+    @patch("radio.Recommend.daily_question")
+    @patch("radio.Recommend.person")
+    def test_sprinkle_gpt_answer(
+        self, mock_person, mock_daily_question, mock_advertisement
+    ):
+        mock_advertisement.return_value = ("Company Name", None)
+        mock_daily_question.return_value = "Question 1"
+        mock_person.return_value = ("Fname", "Lname", "Location")
+        dialogue = Dialogue()
+        dialogue.rec.question = True
+        speech = dialogue.sprinkle_gpt()
+        self.assertEqual(mock_advertisement.call_count, 1)
+        self.assertEqual(mock_daily_question.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    def test_over(self):
+        dialogue = Dialogue()
+        speech = dialogue.over()
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.Recommend.news")
+    def test_news(self, mock_news):
+        mock_news.return_value = ["News 1", "News 2"]
+        dialogue = Dialogue()
+        speech = dialogue.news("Category 1", 2)
+        self.assertEqual(mock_news.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.Recommend.weather")
+    def test_weather(self, mock_weather):
+        mock_weather.return_value = {
+            "weather": "Sunny",
+            "c": "20",
+            "f": "68",
+            "next_hour": "19",
+            "cloudcover": "80",
+            "windspeedKmph": "5",
+        }
+        dialogue = Dialogue()
+        speech = dialogue.weather("Location 1")
+        self.assertEqual(mock_weather.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.Recommend.on_this_day")
+    def test_on_this_day(self, mock_on_this_day):
+        mock_on_this_day.return_value = ["Fact 1", "Fact 2", "Fact 3"]
+        dialogue = Dialogue()
+        speech = dialogue.on_this_day()
+        self.assertEqual(mock_on_this_day.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
