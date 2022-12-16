@@ -370,7 +370,9 @@ class Dialogue:
         """
         for action, meta in self.schema:
             speech = None
-            if action == "up":
+            if action == "no-ads":
+                self.rec.ad_prob = 0
+            elif action == "up":
                 speech = self.wakeup()
                 self.speak(speech, announce=True)
                 speech = self.sprinkle_gpt()
