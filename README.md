@@ -64,6 +64,9 @@ Actions available are:
 * `music-billboard`
   * fetches and streams music [from Billboard charts](https://www.billboard.com/charts/)
   * characteristic should contain **list of lists** of the format `[chart_name, num_of_songs]`
+* `podcast`
+  * fetches an interesting clip from a podcast
+  * characteristic should be a list of the format `[podcast_rss_link, max_clip_duration_in_mins]`
 * `weather`
   * broadcasts the weather
   * characteristic should contain city name. Use `null` to fetch weather using your IP address.
