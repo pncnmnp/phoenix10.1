@@ -193,7 +193,7 @@ class Dialogue:
     Also, fetches music and its metadata
     """
 
-    def __init__(self):
+    def __init__(self, audio_dir=None):
         self.rec = Recommend()
         self.synthesizer = self.init_speech()
         with open(PATH["schema"], "r", encoding="UTF-8") as file:
@@ -202,8 +202,12 @@ class Dialogue:
             self.phones = json.load(file)
         self.index = 0
         # Used to store intermediate audio clips
-        self.audio_dir = "./" + uuid.uuid4().hex[:10]
-        os.makedirs(self.audio_dir)
+        if audio_dir is None:
+            self.audio_dir = "./" + uuid.uuid4().hex[:10]
+            os.makedirs(self.audio_dir)
+        else:
+            self.audio_dir = audio_dir
+            os.makedirs(self.audio_dir, exist_ok=True)
 
     def wakeup(self):
         """

@@ -3,6 +3,8 @@ from mock import patch
 from radio import Recommend, Dialogue
 
 import json
+import os
+import shutil
 
 from feedparser.util import FeedParserDict
 from billboard import ChartEntry
@@ -140,15 +142,24 @@ class Test_Recommend(unittest.TestCase):
 
 
 class Test_Dialogue(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.test_path = "./test_audio/"
+
+    @classmethod
+    def tearDownClass(cls):
+        if os.path.exists(cls.test_path):
+            shutil.rmtree(cls.test_path)
+
     def test_wakeup(self):
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.wakeup()
         self.assertEqual(isinstance(speech, str), True)
 
     @patch("radio.Recommend.advertisement")
     def test_sprinkle_gpt_speech(self, mock_advertisement):
         mock_advertisement.return_value = ("Company Name", "Speech 1")
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.sprinkle_gpt()
         self.assertEqual(mock_advertisement.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
@@ -158,7 +169,7 @@ class Test_Dialogue(unittest.TestCase):
     def test_sprinkle_gpt_question(self, mock_daily_question, mock_advertisement):
         mock_advertisement.return_value = ("Company Name", None)
         mock_daily_question.return_value = "Question 1"
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.sprinkle_gpt()
         self.assertEqual(mock_advertisement.call_count, 1)
         self.assertEqual(mock_daily_question.call_count, 1)
@@ -173,7 +184,7 @@ class Test_Dialogue(unittest.TestCase):
         mock_advertisement.return_value = ("Company Name", None)
         mock_daily_question.return_value = "Question 1"
         mock_person.return_value = ("Fname", "Lname", "Location")
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         dialogue.rec.question = True
         speech = dialogue.sprinkle_gpt()
         self.assertEqual(mock_advertisement.call_count, 1)
@@ -181,14 +192,14 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(isinstance(speech, str), True)
 
     def test_over(self):
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.over()
         self.assertEqual(isinstance(speech, str), True)
 
     @patch("radio.Recommend.news")
     def test_news(self, mock_news):
         mock_news.return_value = ["News 1", "News 2"]
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.news("Category 1", 2)
         self.assertEqual(mock_news.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
@@ -203,7 +214,7 @@ class Test_Dialogue(unittest.TestCase):
             "cloudcover": "80",
             "windspeedKmph": "5",
         }
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.weather("Location 1")
         self.assertEqual(mock_weather.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
@@ -211,7 +222,7 @@ class Test_Dialogue(unittest.TestCase):
     @patch("radio.Recommend.on_this_day")
     def test_on_this_day(self, mock_on_this_day):
         mock_on_this_day.return_value = ["Fact 1", "Fact 2", "Fact 3"]
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.on_this_day()
         self.assertEqual(mock_on_this_day.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
@@ -227,7 +238,7 @@ class Test_Dialogue(unittest.TestCase):
                 }
             )
         ]
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, start=True)
         self.assertEqual(mock_get_from_itunes.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
@@ -243,7 +254,7 @@ class Test_Dialogue(unittest.TestCase):
                 }
             )
         ]
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, start=False)
         self.assertEqual(mock_get_from_itunes.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
@@ -253,7 +264,7 @@ class Test_Dialogue(unittest.TestCase):
         mock_artist_discography.return_value = [
             "Song",
         ]
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         meta = [("Artist 1", 1), ("Artist 2", 1)]
         songs = dialogue.curate_discography(action="music-artist", meta=meta)
         self.assertEqual(mock_artist_discography.call_count, 2)
@@ -264,7 +275,7 @@ class Test_Dialogue(unittest.TestCase):
         mock_playlist_by_genre.return_value = [
             ("Artist", "Song"),
         ]
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         meta = [("Genre 1", 1), ("Genre 2", 1)]
         songs = dialogue.curate_discography(action="music-genre", meta=meta)
         self.assertEqual(mock_playlist_by_genre.call_count, 2)
@@ -275,14 +286,14 @@ class Test_Dialogue(unittest.TestCase):
         mock_billboard.return_value = [
             ("Artist", "Song"),
         ]
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         meta = [("Chart 1", 1), ("Chart 2", 1)]
         songs = dialogue.curate_discography(action="music-billboard", meta=meta)
         self.assertEqual(mock_billboard.call_count, 2)
         self.assertEqual(len(songs), 2)
 
     def test_curate_discography_default(self):
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         meta = ["Song 1", "Song 2"]
         songs = dialogue.curate_discography(action="music", meta=meta)
         self.assertEqual(len(songs), 2)
@@ -293,7 +304,7 @@ class Test_Dialogue(unittest.TestCase):
             return arg
 
         mock_english_cleaners.side_effect = side_effect
-        dialogue = Dialogue()
+        dialogue = Dialogue(self.test_path)
         cleaned = dialogue.cleaner("ABC")
         self.assertEqual(mock_english_cleaners.call_count, 1)
         self.assertEqual(cleaned, "ae bee sieh ")
