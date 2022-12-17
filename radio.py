@@ -353,7 +353,7 @@ class Dialogue:
         """
         # Download the podcast
         parsed = podcastparser.parse(rss_feed, urllib.request.urlopen(rss_feed))
-        podcast_link = parsed["episodes"][0]["link"]
+        podcast_link = parsed["episodes"][0]["enclosures"][0]["url"]
         audio_file = f"{self.audio_dir}/a{self.index}.mp3"
         subprocess.run(
             [
@@ -513,10 +513,10 @@ class Dialogue:
                 if duration == None:
                     duration = 15
                 speech = self.podcast_dialogue(rss_feed)
-                self.speak(speech)
+                self.speak(speech, announce=True)
                 self.podcast_clip(rss_feed, int(duration))
                 speech = self.podcast_dialogue(rss_feed, start=False)
-                self.speak(speech)
+                self.speak(speech, announce=True)
             elif action == "news":
                 category, k = meta
                 speech = self.news(category, k)
