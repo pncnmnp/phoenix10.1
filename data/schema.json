@@ -1,6 +1,7 @@
 [
     ["up", null],
     ["music", ["SONG_NAME_1", "SONG_NAME_2"]],
+    ["podcast", ["PODCAST_RSS_URL", 15]],
     ["weather", "Streator"],
     ["music-artist", [["ARTIST_NAME_1", 2], ["ARTIST_NAME_2", 3]]],
     ["news", ["business", 5]],

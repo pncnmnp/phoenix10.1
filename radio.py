@@ -16,6 +16,8 @@ import random
 import os
 from pathlib import Path
 import re
+import subprocess
+import urllib.request
 import uuid
 
 import billboard
@@ -23,7 +25,9 @@ from feedparser import parse
 from ffmpy import FFmpeg
 import musicbrainzngs
 from nltk import sent_tokenize
+import numpy
 import pandas as pd
+import podcastparser
 from pydub import AudioSegment
 import requests
 import ytmdl
@@ -322,6 +326,119 @@ class Dialogue:
         os.remove(mp3)
         self.index += 1
 
+    def podcast_dialogue(self, rss_feed, start=True):
+        parsed = podcastparser.parse(rss_feed, urllib.request.urlopen(rss_feed))
+        if start:
+            speech = (
+                "You know, I love listening to podcasts. "
+                "The beautiful thing about it is that podcasting is just talking. "
+                "It can be funny, or it can be terrifying. "
+                "It can be sweet. It can be obnoxious. "
+                "It almost has no definitive form. "
+                "In that sense it is one of the best ways to explore an idea. "
+                f"Recently, I have been listening to {parsed['title']} from {parsed['itunes_author']}. "
+                "Please sit back, relax, and enjoy this short clip from them. "
+            )
+        else:
+            speech = (
+                "Wow! That was something, wasn't it? "
+                f"The podcast you just listened to was {parsed['title']} from {parsed['itunes_author']}. "
+                "If you enjoyed it, please do check them out."
+            )
+        return speech
+
+    def podcast_clip(self, rss_feed, duration):
+        """
+        Fetches an interesting clip from the podcast
+        """
+        # Download the podcast
+        parsed = podcastparser.parse(rss_feed, urllib.request.urlopen(rss_feed))
+        podcast_link = parsed["episodes"][0]["link"]
+        audio_file = f"{self.audio_dir}/a{self.index}.mp3"
+        subprocess.run(
+            [
+                "yt-dlp",
+                "--extract-audio",
+                "--audio-format",
+                "mp3",
+                "--max-downloads",
+                "1",
+                f"{podcast_link}",
+                "--output",
+                f"{audio_file}",
+            ]
+        )
+
+        # Find out sections of podcast which have a long pause
+        # This will help us split the podcast into pieces
+        # Logic is from mxl: https://stackoverflow.com/a/57126101
+        # Licensed under CC BY-SA 4.0
+        # Pydub is way slow for this task
+        silence_timestamps = list()
+        duration_sec = duration * 60
+        silence_duration = 1.1
+        threshold = int(float(0.1 * 65535))
+        sampling_rate = 22050
+        threshold_sampling_rate = silence_duration * sampling_rate
+        buffer_length = int(threshold_sampling_rate * 2)
+
+        # dummy array for the first chunk
+        prev_arr = numpy.arange(1, dtype="int16")
+        position, prev_position = 0, 0
+        pipe = subprocess.Popen(
+            [
+                "ffmpeg",
+                "-i",
+                f"{audio_file}",
+                "-f",
+                "s16le",  # PCM signed 16-bit little-endian
+                "-acodec",
+                "pcm_s16le",
+                "-ar",
+                str(sampling_rate),
+                "-ac",
+                "1",  # for mono
+                "-",  # - output to stdout
+            ],
+            stdout=subprocess.PIPE,
+            bufsize=10**8,
+        )
+
+        while True:
+            raw = pipe.stdout.read(buffer_length)
+            if len(prev_arr) == 0 or raw == "":
+                break
+            curr_arr = numpy.fromstring(raw, dtype="int16")
+            curr_range = numpy.concatenate([prev_arr, curr_arr])
+            maximum = numpy.amax(curr_range)
+            if maximum <= threshold:
+                # pass filter with all samples <= threshold set to 0
+                # and > threshold set to 1
+                trng = (curr_range <= threshold) * 1
+                samples = numpy.sum(trng)
+                # check how many 1's were there
+                if samples >= threshold_sampling_rate:
+                    end_time = position + silence_duration * 0.5
+                    time = (end_time) - prev_position
+                    if time <= duration_sec:
+                        silence_timestamps.append((prev_position, end_time))
+                    prev_position = position + silence_duration * 0.5
+            position += silence_duration
+            prev_arr = curr_arr
+
+        silence_timestamps = sorted(
+            silence_timestamps, key=lambda time: time[1] - time[0], reverse=True
+        )
+        optimal_start, optimal_end = silence_timestamps[0]
+
+        podcast_audio = AudioSegment.from_mp3(audio_file)
+        optimal_clip = podcast_audio[optimal_start * 1000 : optimal_end * 1000]
+        optimal_clip.export(audio_file.replace(".mp3", ".wav"), format="wav")
+        # remove the entire podcast file
+        os.remove(audio_file)
+        self.index += 1
+        self.silence()
+
     def music_meta(self, song, artist=None, start=True):
         """
         Fetches meta data for a song
@@ -391,6 +508,15 @@ class Dialogue:
                     self.speak(speech, announce=True)
                     speech = self.sprinkle_gpt()
                     self.speak(speech)
+            elif action == "podcast":
+                rss_feed, duration = meta
+                if duration == None:
+                    duration = 15
+                speech = self.podcast_dialogue(rss_feed)
+                self.speak(speech)
+                self.podcast_clip(rss_feed, int(duration))
+                speech = self.podcast_dialogue(rss_feed, start=False)
+                self.speak(speech)
             elif action == "news":
                 category, k = meta
                 speech = self.news(category, k)
