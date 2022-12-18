@@ -327,6 +327,9 @@ class Dialogue:
         self.index += 1
 
     def podcast_dialogue(self, rss_feed, start=True):
+        """
+        Speech for a podcast
+        """
         parsed = podcastparser.parse(rss_feed, urllib.request.urlopen(rss_feed))
         if start:
             speech = (
