@@ -434,7 +434,6 @@ class Dialogue:
         podcast_audio = AudioSegment.from_mp3(audio_file)
         optimal_clip = podcast_audio[optimal_start * 1000 : optimal_end * 1000]
         optimal_clip.export(audio_file.replace(".mp3", ".wav"), format="wav")
-        # remove the entire podcast file
         os.remove(audio_file)
         self.index += 1
         self.silence()
@@ -445,7 +444,10 @@ class Dialogue:
         NOTE: This is a tough problem to solve as the users only enter the
             song name. Currently, it fetches the first song. Needs improvement!
         """
-        info = ytmdl.metadata.get_from_itunes(song)[0].json
+        try:
+            info = ytmdl.metadata.get_from_itunes(song)[0].json
+        except TypeError:
+            return None
         info["artistName"] = artist if artist else info["artistName"]
         if start:
             speech = (
@@ -502,6 +504,11 @@ class Dialogue:
                 songs = self.curate_discography(action, meta)
                 for artist, song in songs:
                     speech = self.music_meta(song, artist)
+                    if speech is None:
+                        # At this point, it is likely that the
+                        # song name is garbage. It is best to skip this song,
+                        # than to show the user some random song
+                        continue
                     self.speak(speech, announce=True)
                     self.music(song, artist)
                     speech = self.music_meta(song, artist, False)
