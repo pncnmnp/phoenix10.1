@@ -594,7 +594,10 @@ class Dialogue:
                 pronounce += self.phones[alphabet.lower()] + " "
             speech = speech.replace(acronym, pronounce.replace(".", ""))
         return english_cleaners(
-            speech.replace("..", ".").replace("’", "'").replace(".,", ",")
+            speech.replace("..", ".")
+            .replace("’", "'")
+            .replace(".,", ",")
+            .replace("?.", "?")
         )
 
     def speak(self, speech, announce=False):
