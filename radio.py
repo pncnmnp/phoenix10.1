@@ -483,7 +483,13 @@ class Dialogue:
                 songs = self.rec.billboard(chart, num_songs)
                 discography += songs
         else:
-            discography = [(None, song) for song in meta]
+            for artist_song in meta:
+                artist, song = (
+                    artist_song
+                    if isinstance(artist_song, list)
+                    else (None, artist_song)
+                )
+                discography += [(artist, song)]
         if action[:6] == "music-":
             random.shuffle(discography)
         return discography
