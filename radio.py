@@ -106,7 +106,22 @@ class Recommend:
 
     def music_intro_outro(self):
         """
-        Recommends a music intro
+        Recommends a music intro/outro
+        GPT-3.5-turbo was used to generate the responses
+        The prompt used was:
+        For intros,
+            how do radio hosts introduce a song?
+            Can you give me some interesting phrases?
+            Put them in a JSON list
+            Recommend some normal intros, not too hyped up.
+            We do not know what kind of song to recommend,
+            so do not assume a genre or a mood.
+            Something generic and neutral and fun.
+        For outros,
+            something that can be said after the song is finished?
+            again, We do not know what kind of song to recommend,
+            so do not assume a genre or a mood.
+            Something generic and neutral and fun.
         """
         with open(PATH["music_intro_outro"], "r", encoding="UTF-8") as file:
             phrases = json.load(file)
@@ -151,10 +166,22 @@ class Recommend:
         Generates an advertisement
         Company names are fictional -
             https://en.wikipedia.org/wiki/Category:Fictional_companies
-        GPT-2 was used to generate the responses
-        GPT-2 phrase used was -
-            Today's broadcast is sponsered by {company}.
-            {company} is a {category} that is _
+        GPT-3.5-turbo was used to generate the responses
+        GPT-3.5-turbo phrase used was -
+            Can you make advertisements about these companies?
+            <Fictional company names>
+
+            Keep it short and fun - like less than 300 characters.
+            Each ad should start with the following:
+                Today's broadcast is sponsered by <COMPANY_NAME>.
+                <COMPANY_NAME> is a <WHAT IT DOES> that <REST OF THE AD>.
+            Do it in a JSON format - key is the name of the company
+            and value is what the jockey will say.
+
+            Say as it the radio jockey is talking to the audience,
+            so use pronouns like they to describe the company.
+            Also, instead of Company 1, Company 2 in the keys,
+            put the actual company name in it.
         """
         # From
         prob = random.random()
