@@ -21,14 +21,18 @@ import urllib.request
 import uuid
 
 import billboard
+import eyed3
+from eyed3.id3.frames import ImageFrame
 from feedparser import parse
 from ffmpy import FFmpeg
+import matplotlib
 import musicbrainzngs
 from nltk import sent_tokenize
 import numpy
 import pandas as pd
 import podcastparser
 from pydub import AudioSegment
+from randimage import get_random_image, show_array
 import requests
 import ytmdl
 
@@ -55,6 +59,41 @@ class Recommend:
         musicbrainzngs.set_useragent(
             "phoenix10.1", "1", "https://github.com/pncnmnp/phoenix10.1"
         )
+
+    def title(self):
+        """
+        Recommends a title for the radio show
+        GPT-3.5-turbo was used to generate the titles
+        The prompt used was:
+            What can be the title of an AI generated radio station?
+            Suggest something that is very short (like two words) and catchy
+            Give me titles in form of a Python list.
+            I want 7 titles that include the days of the week
+            (like Monday Melodies), and 4 titles which contain
+            parts of the day (morning/evening/afternoon/late-night).
+            So 11 in total.
+        """
+        days = [
+            "Monday Mixtape",
+            "Tune-Up Tuesday",
+            "Wavelength Wednesday",
+            "Throwback Thursday",
+            "Funky Friday Fiesta",
+            "Saturdaze Sensations",
+            "Sunday Soundwaves",
+        ]
+        timeofday = [
+            "Late-Night Live",
+            "Morning Mix",
+            "Afternoon Acoustics",
+            "Evening Euphoria",
+        ]
+        if random.random() < 0.5:
+            day = datetime.datetime.today().weekday()
+            return days[day]
+        else:
+            when = (datetime.datetime.today().hour) // 6
+            return timeofday[when]
 
     def news(self, category="world", k=5):
         """
@@ -624,11 +663,36 @@ class Dialogue:
             outputs={dest: ["-acodec", "libmp3lame", "-b:a", "128k"]},
         )
         convert.run()
+        self.metadata(f"./{dest}")
 
         os.remove(src)
         for index in range(self.index):
             os.remove(f"{self.audio_dir}/a{index}.wav")
         os.rmdir(f"{self.audio_dir}")
+
+    def metadata(self, dest):
+        """
+        Add metadata for the dest file
+        """
+        today = datetime.date.today().strftime("%d %b %y")
+        title = self.rec.title() + ": " + today
+        album = "Phoenix 10.1's broadcast"
+        artist = "Phoenix 10.1"
+        audiofile = eyed3.load(dest)
+        # Add poster
+        poster_path = f"{self.audio_dir}/poster.jpeg"
+        poster = get_random_image((512, 512))
+        matplotlib.image.imsave(poster_path, poster)
+        audiofile.tag.images.set(
+            ImageFrame.FRONT_COVER, open(poster_path, "rb").read(), "image/jpeg"
+        )
+        # Add metadata
+        audiofile.tag.title = title
+        audiofile.tag.album = album
+        audiofile.tag.artist = artist
+        audiofile.tag.save()
+        # Cleanup
+        os.remove(poster_path)
 
     def cleaner(self, speech):
         """

@@ -15,6 +15,22 @@ from pydub.generators import WhiteNoise
 
 
 class Test_Recommend(unittest.TestCase):
+    @patch("random.random")
+    def test_title_day(self, mock_random):
+        mock_random.return_value = 0.01
+        rec = Recommend()
+        title = rec.title()
+        self.assertEqual(mock_random.call_count, 1)
+        self.assertEqual(isinstance(title, str), True)
+
+    @patch("random.random")
+    def test_title_timeofday(self, mock_random):
+        mock_random.return_value = 0.99
+        rec = Recommend()
+        title = rec.title()
+        self.assertEqual(mock_random.call_count, 1)
+        self.assertEqual(isinstance(title, str), True)
+
     @patch("radio.parse")
     def test_news(self, mock_parse):
         mock_parse.return_value = FeedParserDict(
@@ -597,7 +613,8 @@ class Test_Dialogue(unittest.TestCase):
 
     @patch("pathlib.Path.is_file")
     @patch("ffmpy.FFmpeg.run")
-    def test_cleanup(self, mock_run, mock_is_file):
+    @patch("radio.Dialogue.metadata")
+    def test_cleanup(self, mock_metadata, mock_run, mock_is_file):
         # NOTE: Using a different path specifically for this test
         os.mkdir(f"./test_audio_cleanup/")
 
@@ -617,8 +634,18 @@ class Test_Dialogue(unittest.TestCase):
         dialogue.cleanup()
         self.assertEqual(mock_run.call_count, 1)
         self.assertEqual(mock_is_file.call_count, 1)
+        self.assertEqual(mock_metadata.call_count, 1)
         self.assertTrue(not os.path.exists(f"./test_audio_cleanup/"))
         self.assertTrue(not os.path.exists(f"./radio.wav"))
+
+    def test_metadata(self):
+        metadata_path = f"{self.test_path}/radio.mp3"
+        # Generate an mp3 file and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(metadata_path, format="mp3")
+
+        dialogue = Dialogue(self.test_path)
+        dialogue.metadata(metadata_path)
 
     @patch("radio.english_cleaners")
     def test_cleaner(self, mock_english_cleaners):
