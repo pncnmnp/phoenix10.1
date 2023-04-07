@@ -460,7 +460,7 @@ class Test_Dialogue(unittest.TestCase):
         mock_speak,
         mock_wakeup,
     ):
-        mock_music_meta.return_value = "Speech"
+        mock_music_meta.side_effect = ["Speech", "Speech", None]
         mock_curate_discography.return_value = [
             ["Artist 1", "Song 1"],
             ["Artist 2", "Song 2"],
@@ -470,7 +470,7 @@ class Test_Dialogue(unittest.TestCase):
             ["no-ads", None],
             ["up", None],
             ["music", [["Song 1", "Artist 1"], ["Song 2", "Artist 2"]]],
-            ["podcast", ["PODCAST_RSS_URL", 15]],
+            ["podcast", ["PODCAST_RSS_URL", None]],
             ["news", ["Category", 5]],
             ["weather", "City name"],
             ["fun", None],
@@ -488,11 +488,11 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_podcast_dialogue.call_count, 2)
 
         self.assertEqual(mock_curate_discography.call_count, 1)
-        self.assertEqual(mock_music.call_count, 2)
-        self.assertEqual(mock_music_meta.call_count, 4)
-        self.assertEqual(mock_speak.call_count, 14)
+        self.assertEqual(mock_music.call_count, 1)
+        self.assertEqual(mock_music_meta.call_count, 3)
+        self.assertEqual(mock_speak.call_count, 11)
 
-        self.assertEqual(mock_sprinkle_gpt.call_count, 3)
+        self.assertEqual(mock_sprinkle_gpt.call_count, 2)
         self.assertEqual(mock_wakeup.call_count, 1)
 
     def test_radio(self):
@@ -542,6 +542,11 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_silence.call_count, 1)
         self.assertEqual(mock_slow_it_down.call_count, 1)
         self.assertEqual(mock_save_speech.call_count, 1)
+
+    def test_speak_no_speech(self):
+        dialogue = Dialogue(self.test_path)
+        speech = dialogue.speak(None, announce=False)
+        self.assertEqual(speech, None)
 
     def test_slow_it_down(self):
         # Generate an mp3 file and fill it with white noise
