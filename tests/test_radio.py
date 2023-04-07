@@ -482,6 +482,48 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_sprinkle_gpt.call_count, 3)
         self.assertEqual(mock_wakeup.call_count, 1)
 
+    @patch("radio.Dialogue.save_speech")
+    @patch("radio.Dialogue.cleaner")
+    @patch("radio.Dialogue.background_music")
+    @patch("radio.Dialogue.silence")
+    def test_speak_announce(
+        self,
+        mock_silence,
+        mock_background_music,
+        mock_cleaner,
+        mock_save_speech,
+    ):
+        dialogue = Dialogue(self.test_path)
+        dialogue.speak("Speech", announce=True)
+        self.assertEqual(mock_silence.call_count, 1)
+        self.assertEqual(mock_background_music.call_count, 1)
+        self.assertEqual(mock_save_speech.call_count, 1)
+
+    @patch("radio.Dialogue.save_speech")
+    @patch("radio.Dialogue.cleaner")
+    @patch("radio.Dialogue.slow_it_down")
+    @patch("radio.Dialogue.silence")
+    def test_speak(
+        self,
+        mock_silence,
+        mock_slow_it_down,
+        mock_cleaner,
+        mock_save_speech,
+    ):
+        dialogue = Dialogue(self.test_path)
+        dialogue.speak("Speech", announce=False)
+        self.assertEqual(mock_silence.call_count, 1)
+        self.assertEqual(mock_slow_it_down.call_count, 1)
+        self.assertEqual(mock_save_speech.call_count, 1)
+
+    @patch("pydub.AudioSegment.from_wav")
+    def test_background_music(self, mock_from_wav):
+        # Generate an mp3 file and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        mock_from_wav.return_value = audio_file
+        dialogue = Dialogue(self.test_path)
+        dialogue.background_music()
+
     @patch("radio.english_cleaners")
     def test_cleaner(self, mock_english_cleaners):
         def side_effect(arg):
