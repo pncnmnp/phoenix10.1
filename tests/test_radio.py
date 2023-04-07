@@ -10,6 +10,7 @@ from feedparser.util import FeedParserDict
 from billboard import ChartEntry
 from requests.models import Response
 from itunespy.track import Track
+from pydub.generators import WhiteNoise
 
 
 class Test_Recommend(unittest.TestCase):
@@ -69,6 +70,12 @@ class Test_Recommend(unittest.TestCase):
         self.assertNotEqual(songs, None)
         self.assertEqual(len(songs), 2)
 
+    def test_music_intro_outro(self):
+        rec = Recommend()
+        intro, outro = rec.music_intro_outro()
+        self.assertNotEqual(intro, None)
+        self.assertNotEqual(outro, None)
+
     def test_person(self):
         rec = Recommend()
         first, last, loc = rec.person()
@@ -88,6 +95,13 @@ class Test_Recommend(unittest.TestCase):
         company, advertisement = rec.advertisement()
         self.assertNotEqual(company, None)
         self.assertNotEqual(advertisement, None)
+
+    def test_no_advertisement(self):
+        rec = Recommend()
+        rec.ad_prob = 0
+        company, advertisement = rec.advertisement()
+        self.assertEqual(company, None)
+        self.assertEqual(advertisement, None)
 
     @patch("radio.requests.get")
     def test_weather(self, mock_get):
@@ -117,6 +131,38 @@ class Test_Recommend(unittest.TestCase):
         mock_get.return_value = resp
         rec = Recommend()
         forecast = rec.weather("City 1")
+        self.assertEqual(mock_get.call_count, 1)
+        self.assertNotEqual(forecast, None)
+        self.assertEqual(len(forecast), 6)
+
+    @patch("radio.requests.get")
+    def test_weather_no_location(self, mock_get):
+        resp = Response()
+        resp_content = {
+            "current_condition": [
+                {
+                    "cloudcover": "100",
+                    "temp_C": "5",
+                    "temp_F": "41",
+                    "weatherDesc": [{"value": "Overcast"}],
+                    "windspeedKmph": "6",
+                }
+            ],
+            "weather": [
+                {
+                    "hourly": [
+                        {
+                            "weatherDesc": [{"value": "Partly cloudy"}],
+                        },
+                    ]
+                }
+            ],
+        }
+        resp._content = json.dumps(resp_content, indent=2).encode("utf-8")
+        mock_get.return_value.status_code = 201
+        mock_get.return_value = resp
+        rec = Recommend()
+        forecast = rec.weather(None)
         self.assertEqual(mock_get.call_count, 1)
         self.assertNotEqual(forecast, None)
         self.assertEqual(len(forecast), 6)
@@ -225,6 +271,38 @@ class Test_Dialogue(unittest.TestCase):
         dialogue = Dialogue(self.test_path)
         speech = dialogue.on_this_day()
         self.assertEqual(mock_on_this_day.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.ytmdl.main.main")
+    def test_music(self, mock_main):
+        # Generate an mp3 file and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(f"{self.test_path}/new.mp3", format="mp3")
+
+        dialogue = Dialogue(self.test_path)
+        dialogue.music("Song 1", artist="Artist 1")
+        self.assertEqual(mock_main.call_count, 1)
+        self.assertTrue(not os.path.exists(f"{self.test_path}/new.mp3"))
+        self.assertTrue(os.path.exists(f"{self.test_path}/a0.wav"))
+
+    @patch("podcastparser.parse")
+    @patch("urllib.request.urlopen")
+    def test_podcast_dialogue_start(self, mock_urlopen, mock_parse):
+        mock_parse.return_value = {"title": "Title", "itunes_author": "Author"}
+        mock_urlopen.return_value = "URL"
+        dialogue = Dialogue(self.test_path)
+        speech = dialogue.podcast_dialogue("RSS feed", start=True)
+        self.assertEqual(mock_parse.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+
+    @patch("podcastparser.parse")
+    @patch("urllib.request.urlopen")
+    def test_podcast_dialogue_start(self, mock_urlopen, mock_parse):
+        mock_parse.return_value = {"title": "Title", "itunes_author": "Author"}
+        mock_urlopen.return_value = "URL"
+        dialogue = Dialogue(self.test_path)
+        speech = dialogue.podcast_dialogue("RSS feed", start=False)
+        self.assertEqual(mock_parse.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
 
     @patch("radio.Recommend.music_intro_outro")
