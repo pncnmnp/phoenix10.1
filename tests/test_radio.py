@@ -195,6 +195,9 @@ class Test_Dialogue(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        # If radio.wav exists, delete it
+        os.remove("./radio.wav")
+
         if os.path.exists(cls.test_path):
             shutil.rmtree(cls.test_path)
 
@@ -482,6 +485,20 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_sprinkle_gpt.call_count, 3)
         self.assertEqual(mock_wakeup.call_count, 1)
 
+    def test_radio(self):
+        # Generate two mp3 files and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(f"{self.test_path}/a0.wav", format="wav")
+        audio_file.export(f"{self.test_path}/a1.wav", format="wav")
+
+        dialogue = Dialogue(self.test_path)
+        dialogue.index = 2
+        self.assertTrue(not os.path.exists(f"./radio.wav"))
+        dialogue.radio()
+        self.assertTrue(os.path.exists(f"{self.test_path}/a0.wav"))
+        self.assertTrue(os.path.exists(f"{self.test_path}/a1.wav"))
+        self.assertTrue(os.path.exists(f"./radio.wav"))
+
     @patch("radio.Dialogue.save_speech")
     @patch("radio.Dialogue.cleaner")
     @patch("radio.Dialogue.background_music")
@@ -515,6 +532,17 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_silence.call_count, 1)
         self.assertEqual(mock_slow_it_down.call_count, 1)
         self.assertEqual(mock_save_speech.call_count, 1)
+
+    def test_slow_it_down(self):
+        # Generate an mp3 file and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(f"{self.test_path}/a0.wav", format="wav")
+
+        dialogue = Dialogue(self.test_path)
+        dialogue.index = 1
+        dialogue.slow_it_down(start_index=0)
+        self.assertTrue(os.path.exists(f"{self.test_path}/a0.wav"))
+        self.assertTrue(not os.path.exists(f"{self.test_path}/out.wav"))
 
     @patch("pydub.AudioSegment.from_wav")
     def test_background_music(self, mock_from_wav):
