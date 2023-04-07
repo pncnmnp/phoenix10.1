@@ -562,6 +562,31 @@ class Test_Dialogue(unittest.TestCase):
         dialogue = Dialogue(self.test_path)
         dialogue.background_music()
 
+    @patch("pathlib.Path.is_file")
+    @patch("ffmpy.FFmpeg.run")
+    def test_cleanup(self, mock_run, mock_is_file):
+        # NOTE: Using a different path specifically for this test
+        os.mkdir(f"./test_audio_cleanup/")
+
+        # Generate two mp3 files and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(f"./test_audio_cleanup/a0.wav", format="wav")
+        audio_file.export(f"./test_audio_cleanup/a1.wav", format="wav")
+
+        # Generate a radio.wav file, which will be deleted
+        audio_file.export(f"./radio.wav", format="wav")
+
+        # Important, otherwise it will delete your radio.mp3 file
+        mock_is_file.return_value = False
+
+        dialogue = Dialogue("./test_audio_cleanup/")
+        dialogue.index = 2
+        dialogue.cleanup()
+        self.assertEqual(mock_run.call_count, 1)
+        self.assertEqual(mock_is_file.call_count, 1)
+        self.assertTrue(not os.path.exists(f"./test_audio_cleanup/"))
+        self.assertTrue(not os.path.exists(f"./radio.wav"))
+
     @patch("radio.english_cleaners")
     def test_cleaner(self, mock_english_cleaners):
         def side_effect(arg):
