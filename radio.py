@@ -465,6 +465,7 @@ class Dialogue:
         except TypeError:
             return None
         info["artistName"] = artist if artist else info["artistName"]
+        info["trackName"] = song if song else info["trackName"]
         intro, outro = self.rec.music_intro_outro()
         if start:
             speech = (
