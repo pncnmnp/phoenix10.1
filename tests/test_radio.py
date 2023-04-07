@@ -227,8 +227,9 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_on_this_day.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
 
+    @patch("radio.Recommend.music_intro_outro")
     @patch("radio.ytmdl.metadata.get_from_itunes")
-    def test_music_meta_start(self, mock_get_from_itunes):
+    def test_music_meta_start(self, mock_get_from_itunes, mock_music_intro_outro):
         mock_get_from_itunes.return_value = [
             Track(
                 json={
@@ -238,13 +239,15 @@ class Test_Dialogue(unittest.TestCase):
                 }
             )
         ]
+        mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
         dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, start=True)
         self.assertEqual(mock_get_from_itunes.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
 
+    @patch("radio.Recommend.music_intro_outro")
     @patch("radio.ytmdl.metadata.get_from_itunes")
-    def test_music_meta_no_start(self, mock_get_from_itunes):
+    def test_music_meta_no_start(self, mock_get_from_itunes, mock_music_intro_outro):
         mock_get_from_itunes.return_value = [
             Track(
                 json={
@@ -254,6 +257,7 @@ class Test_Dialogue(unittest.TestCase):
                 }
             )
         ]
+        mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
         dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, start=False)
         self.assertEqual(mock_get_from_itunes.call_count, 1)

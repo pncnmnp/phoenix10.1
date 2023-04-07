@@ -104,6 +104,14 @@ class Recommend:
         random.shuffle(songs)
         return songs[: int(num_songs)]
 
+    def music_intro_outro(self):
+        """
+        Recommends a music intro
+        """
+        with open(PATH["music_intro_outro"], "r", encoding="UTF-8") as file:
+            phrases = json.load(file)
+        return random.choice(phrases["intros"]), random.choice(phrases["outros"])
+
     def person(self):
         """
         Provides a random identity -
@@ -452,15 +460,18 @@ class Dialogue:
         except TypeError:
             return None
         info["artistName"] = artist if artist else info["artistName"]
+        intro, outro = self.rec.music_intro_outro()
         if start:
             speech = (
+                f"{intro} "
                 f'The next song is from the world of {info["primaryGenreName"]}. '
                 f'{info["trackName"]} by {info["artistName"]}. '
             )
             return speech
         else:
             speech = (
-                f'That was {info["trackName"]} by {info["artistName"]}. '
+                f"{outro} "
+                f'The track was {info["trackName"]} by {info["artistName"]}. '
                 "You are listening to Phoenix ten point one! "
             )
             return speech
