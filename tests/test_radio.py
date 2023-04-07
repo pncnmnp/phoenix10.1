@@ -543,6 +543,34 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_slow_it_down.call_count, 1)
         self.assertEqual(mock_save_speech.call_count, 1)
 
+    @patch("radio.Dialogue.save_speech")
+    @patch("radio.Dialogue.cleaner")
+    @patch("radio.Dialogue.slow_it_down")
+    @patch("radio.Dialogue.silence")
+    def test_speak_long(
+        self,
+        mock_silence,
+        mock_slow_it_down,
+        mock_cleaner,
+        mock_save_speech,
+    ):
+        speech = (
+            "The birch canoe slid on the smooth planks, "
+            "Glue the sheet to the dark blue background, "
+            "It's easy to tell the depth of a well, "
+            "These days a chicken leg is a rare dish, "
+            "Rice is often served in round bowls. "
+        )
+        dialogue = Dialogue(self.test_path)
+        dialogue.speak(speech, announce=False)
+        self.assertEqual(mock_silence.call_count, 1)
+        self.assertEqual(mock_cleaner.call_count, 1)
+        self.assertEqual(mock_slow_it_down.call_count, 1)
+        # The first time, as length is greater than 300, it will
+        # try and output what's before, which is nothing, and then
+        # output this long sentence
+        self.assertEqual(mock_save_speech.call_count, 2)
+
     def test_speak_no_speech(self):
         dialogue = Dialogue(self.test_path)
         speech = dialogue.speak(None, announce=False)
