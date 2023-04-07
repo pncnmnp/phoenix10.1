@@ -440,10 +440,15 @@ class Dialogue:
         silence_timestamps = sorted(
             silence_timestamps, key=lambda time: time[1] - time[0], reverse=True
         )
-        optimal_start, optimal_end = silence_timestamps[0]
+        try:
+            optimal_start, optimal_end = silence_timestamps[0]
+            podcast_audio = AudioSegment.from_mp3(audio_file)
+            optimal_clip = podcast_audio[optimal_start * 1000 : optimal_end * 1000]
+        except IndexError:
+            # If no silence is found, just take the first "duration" minutes
+            optimal_start, optimal_end = None, None
+            optimal_clip = AudioSegment.from_mp3(audio_file)[: duration_sec * 1000]
 
-        podcast_audio = AudioSegment.from_mp3(audio_file)
-        optimal_clip = podcast_audio[optimal_start * 1000 : optimal_end * 1000]
         optimal_clip.export(audio_file.replace(".mp3", ".wav"), format="wav")
         os.remove(audio_file)
         self.index += 1

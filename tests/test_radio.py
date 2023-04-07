@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 from mock import patch
 from radio import Recommend, Dialogue
@@ -305,6 +306,41 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_parse.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
 
+    @patch("os.remove")
+    @patch("pydub.AudioSegment.export")
+    @patch("pydub.AudioSegment.from_mp3")
+    @patch("subprocess.run")
+    @patch("podcastparser.parse")
+    @patch("urllib.request.urlopen")
+    def test_podcast_clip(
+        self,
+        mock_urlopen,
+        mock_parse,
+        mock_run,
+        mock_from_mp3,
+        mock_export,
+        mock_remove,
+    ):
+        dialogue = Dialogue(self.test_path)
+
+        mock_parse.return_value = {
+            "title": "Title",
+            "itunes_author": "Author",
+            "episodes": [{"enclosures": [{"url": "URL"}]}],
+        }
+        mock_urlopen.return_value = "URL"
+
+        # Generate an mp3 file and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        mock_from_mp3.return_value = audio_file
+
+        dialogue.podcast_clip("RSS feed", duration=100)
+        self.assertEqual(mock_parse.call_count, 1)
+        self.assertEqual(mock_run.call_count, 1)
+        self.assertEqual(mock_from_mp3.call_count, 1)
+        self.assertEqual(mock_export.call_count, 2)
+        self.assertEqual(mock_remove.call_count, 1)
+
     @patch("radio.Recommend.music_intro_outro")
     @patch("radio.ytmdl.metadata.get_from_itunes")
     def test_music_meta_start(self, mock_get_from_itunes, mock_music_intro_outro):
@@ -379,6 +415,72 @@ class Test_Dialogue(unittest.TestCase):
         meta = ["Song 1", "Song 2"]
         songs = dialogue.curate_discography(action="music", meta=meta)
         self.assertEqual(len(songs), 2)
+
+    @patch("radio.Dialogue.wakeup")
+    @patch("radio.Dialogue.speak")
+    @patch("radio.Dialogue.sprinkle_gpt")
+    @patch("radio.Dialogue.curate_discography")
+    @patch("radio.Dialogue.music_meta")
+    @patch("radio.Dialogue.music")
+    @patch("radio.Dialogue.podcast_dialogue")
+    @patch("radio.Dialogue.podcast_clip")
+    @patch("radio.Dialogue.news")
+    @patch("radio.Dialogue.weather")
+    @patch("radio.Dialogue.on_this_day")
+    @patch("radio.Dialogue.over")
+    @patch("radio.Dialogue.radio")
+    @patch("radio.Dialogue.cleanup")
+    def test_flow(
+        self,
+        mock_cleanup,
+        mock_radio,
+        mock_over,
+        mock_on_this_day,
+        mock_weather,
+        mock_news,
+        mock_podcast_clip,
+        mock_podcast_dialogue,
+        mock_music,
+        mock_music_meta,
+        mock_curate_discography,
+        mock_sprinkle_gpt,
+        mock_speak,
+        mock_wakeup,
+    ):
+        mock_music_meta.return_value = "Speech"
+        mock_curate_discography.return_value = [
+            ["Artist 1", "Song 1"],
+            ["Artist 2", "Song 2"],
+        ]
+        dialogue = Dialogue(self.test_path)
+        dialogue.schema = [
+            ["no-ads", None],
+            ["up", None],
+            ["music", [["Song 1", "Artist 1"], ["Song 2", "Artist 2"]]],
+            ["podcast", ["PODCAST_RSS_URL", 15]],
+            ["news", ["Category", 5]],
+            ["weather", "City name"],
+            ["fun", None],
+            ["end", None],
+        ]
+        dialogue.flow()
+        self.assertEqual(mock_cleanup.call_count, 1)
+        self.assertEqual(mock_radio.call_count, 1)
+        self.assertEqual(mock_over.call_count, 1)
+        self.assertEqual(mock_on_this_day.call_count, 1)
+        self.assertEqual(mock_weather.call_count, 1)
+        self.assertEqual(mock_news.call_count, 1)
+
+        self.assertEqual(mock_podcast_clip.call_count, 1)
+        self.assertEqual(mock_podcast_dialogue.call_count, 2)
+
+        self.assertEqual(mock_curate_discography.call_count, 1)
+        self.assertEqual(mock_music.call_count, 2)
+        self.assertEqual(mock_music_meta.call_count, 4)
+        self.assertEqual(mock_speak.call_count, 14)
+
+        self.assertEqual(mock_sprinkle_gpt.call_count, 3)
+        self.assertEqual(mock_wakeup.call_count, 1)
 
     @patch("radio.english_cleaners")
     def test_cleaner(self, mock_english_cleaners):
