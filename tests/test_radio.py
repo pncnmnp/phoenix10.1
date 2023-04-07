@@ -301,7 +301,7 @@ class Test_Dialogue(unittest.TestCase):
 
     @patch("podcastparser.parse")
     @patch("urllib.request.urlopen")
-    def test_podcast_dialogue_start(self, mock_urlopen, mock_parse):
+    def test_podcast_dialogue_end(self, mock_urlopen, mock_parse):
         mock_parse.return_value = {"title": "Title", "itunes_author": "Author"}
         mock_urlopen.return_value = "URL"
         dialogue = Dialogue(self.test_path)
@@ -360,6 +360,7 @@ class Test_Dialogue(unittest.TestCase):
         dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, start=True)
         self.assertEqual(mock_get_from_itunes.call_count, 1)
+        self.assertEqual(mock_music_intro_outro.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
 
     @patch("radio.Recommend.music_intro_outro")
@@ -378,7 +379,16 @@ class Test_Dialogue(unittest.TestCase):
         dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, start=False)
         self.assertEqual(mock_get_from_itunes.call_count, 1)
+        self.assertEqual(mock_music_intro_outro.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
+
+    @patch("radio.ytmdl.metadata.get_from_itunes")
+    def test_music_meta_none(self, mock_get_from_itunes):
+        mock_get_from_itunes.return_value = TypeError
+        dialogue = Dialogue(self.test_path)
+        speech = dialogue.music_meta("Song 1", artist=None, start=False)
+        self.assertEqual(mock_get_from_itunes.call_count, 1)
+        self.assertEqual(speech, None)
 
     @patch("radio.Recommend.artist_discography")
     def test_curate_discography_artist(self, mock_artist_discography):
