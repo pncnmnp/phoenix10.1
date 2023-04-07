@@ -562,3 +562,9 @@ class Test_Dialogue(unittest.TestCase):
         cleaned = dialogue.cleaner("ABC")
         self.assertEqual(mock_english_cleaners.call_count, 1)
         self.assertEqual(cleaned, "ae bee sieh ")
+
+    def test_save_speech(self):
+        dialogue = Dialogue(self.test_path)
+        dialogue.index = 10
+        dialogue.save_speech("Speech")
+        self.assertTrue(os.path.exists(f"{self.test_path}/a10.wav"))
