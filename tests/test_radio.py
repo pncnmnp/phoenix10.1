@@ -1,4 +1,3 @@
-import subprocess
 import unittest
 from mock import patch
 from radio import Recommend, Dialogue
@@ -519,11 +518,11 @@ class Test_Dialogue(unittest.TestCase):
 
         dialogue = Dialogue(self.test_path)
         dialogue.index = 2
-        self.assertTrue(not os.path.exists(f"./radio.wav"))
+        self.assertTrue(not os.path.exists("./radio.wav"))
         dialogue.radio()
         self.assertTrue(os.path.exists(f"{self.test_path}/a0.wav"))
         self.assertTrue(os.path.exists(f"{self.test_path}/a1.wav"))
-        self.assertTrue(os.path.exists(f"./radio.wav"))
+        self.assertTrue(os.path.exists("./radio.wav"))
 
     @patch("radio.Dialogue.save_speech")
     @patch("radio.Dialogue.cleaner")
@@ -616,15 +615,15 @@ class Test_Dialogue(unittest.TestCase):
     @patch("radio.Dialogue.metadata")
     def test_cleanup(self, mock_metadata, mock_run, mock_is_file):
         # NOTE: Using a different path specifically for this test
-        os.mkdir(f"./test_audio_cleanup/")
+        os.mkdir("./test_audio_cleanup/")
 
         # Generate two mp3 files and fill it with white noise
         audio_file = WhiteNoise().to_audio_segment(duration=1000)
-        audio_file.export(f"./test_audio_cleanup/a0.wav", format="wav")
-        audio_file.export(f"./test_audio_cleanup/a1.wav", format="wav")
+        audio_file.export("./test_audio_cleanup/a0.wav", format="wav")
+        audio_file.export("./test_audio_cleanup/a1.wav", format="wav")
 
         # Generate a radio.wav file, which will be deleted
-        audio_file.export(f"./radio.wav", format="wav")
+        audio_file.export("./radio.wav", format="wav")
 
         # Important, otherwise it will delete your radio.mp3 file
         mock_is_file.return_value = False
@@ -635,8 +634,8 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_run.call_count, 1)
         self.assertEqual(mock_is_file.call_count, 1)
         self.assertEqual(mock_metadata.call_count, 1)
-        self.assertTrue(not os.path.exists(f"./test_audio_cleanup/"))
-        self.assertTrue(not os.path.exists(f"./radio.wav"))
+        self.assertTrue(not os.path.exists("./test_audio_cleanup/"))
+        self.assertTrue(not os.path.exists("./radio.wav"))
 
     def test_metadata(self):
         metadata_path = f"{self.test_path}/radio.mp3"
