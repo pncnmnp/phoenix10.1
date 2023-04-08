@@ -32,7 +32,7 @@ import numpy
 import pandas as pd
 import podcastparser
 from pydub import AudioSegment
-from randimage import get_random_image, show_array
+from randimage import get_random_image
 import requests
 import ytmdl
 
@@ -91,9 +91,8 @@ class Recommend:
         if random.random() < 0.5:
             day = datetime.datetime.today().weekday()
             return days[day]
-        else:
-            when = (datetime.datetime.today().hour) // 6
-            return timeofday[when]
+        when = (datetime.datetime.today().hour) // 6
+        return timeofday[when]
 
     def news(self, category="world", k=5):
         """
@@ -261,7 +260,7 @@ class Recommend:
         url = f"https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/{month}/{day}"
         req = requests.get(url, timeout=100)
         events = [event["text"] for event in req.json()["events"]]
-        facts = sorted(events, key=lambda fact: len(fact))[:k]
+        facts = sorted(events, key=len)[:k]
         return facts
 
 
@@ -329,6 +328,7 @@ class Dialogue:
                 f" A great response! Thank you {fname}! "
             )
             return speech
+        return str()
 
     def over(self):
         """
@@ -413,13 +413,15 @@ class Dialogue:
                 "It can be sweet. It can be obnoxious. "
                 "It almost has no definitive form. "
                 "In that sense it is one of the best ways to explore an idea. "
-                f"Recently, I have been listening to {parsed['title']} from {parsed['itunes_author']}. "
+                "Recently, I have been listening to"
+                f"{parsed['title']} from {parsed['itunes_author']}. "
                 "Please sit back, relax, and enjoy this short clip from them. "
             )
         else:
             speech = (
                 "Wow! That was something, wasn't it? "
-                f"The podcast you just listened to was {parsed['title']} from {parsed['itunes_author']}. "
+                "The podcast you just listened to was"
+                f"{parsed['title']} from {parsed['itunes_author']}. "
                 "If you enjoyed it, please do check them out."
             )
         return speech
@@ -443,7 +445,8 @@ class Dialogue:
                 f"{podcast_link}",
                 "--output",
                 f"{audio_file}",
-            ]
+            ],
+            check=False,
         )
 
         # Find out sections of podcast which have a long pause
@@ -451,7 +454,7 @@ class Dialogue:
         # Logic is from mxl: https://stackoverflow.com/a/57126101
         # Licensed under CC BY-SA 4.0
         # Pydub is way slow for this task
-        silence_timestamps = list()
+        silence_timestamps = []
         duration_sec = duration * 60
         silence_duration = 1.1
         threshold = int(float(0.1 * 65535))
@@ -540,13 +543,12 @@ class Dialogue:
                 f'{info["trackName"]} by {info["artistName"]}. '
             )
             return speech
-        else:
-            speech = (
-                f"{outro} "
-                f'The track was {info["trackName"]} by {info["artistName"]}. '
-                "You are listening to Phoenix ten point one! "
-            )
-            return speech
+        speech = (
+            f"{outro} "
+            f'The track was {info["trackName"]} by {info["artistName"]}. '
+            "You are listening to Phoenix ten point one! "
+        )
+        return speech
 
     def curate_discography(self, action, meta):
         """
@@ -560,7 +562,7 @@ class Dialogue:
         elif action == "music-genre":
             for genre, num_songs in meta:
                 songs = self.rec.playlist_by_genre(genre, num_songs)
-                discography += [(artist, song) for artist, song in songs]
+                discography += songs
         elif action == "music-billboard":
             for chart, num_songs in meta:
                 songs = self.rec.billboard(chart, num_songs)
@@ -609,7 +611,7 @@ class Dialogue:
                     self.speak(speech)
             elif action == "podcast":
                 rss_feed, duration = meta
-                if duration == None:
+                if duration is None:
                     duration = 15
                 speech = self.podcast_dialogue(rss_feed)
                 self.speak(speech, announce=True)
@@ -683,9 +685,10 @@ class Dialogue:
         poster_path = f"{self.audio_dir}/poster.jpeg"
         poster = get_random_image((512, 512))
         matplotlib.image.imsave(poster_path, poster)
-        audiofile.tag.images.set(
-            ImageFrame.FRONT_COVER, open(poster_path, "rb").read(), "image/jpeg"
-        )
+        with open(poster_path, "rb") as image_file:
+            audiofile.tag.images.set(
+                ImageFrame.FRONT_COVER, image_file.read(), "image/jpeg"
+            )
         # Add metadata
         audiofile.tag.title = title
         audiofile.tag.album = album
@@ -728,12 +731,12 @@ class Dialogue:
         speeches = sent_tokenize(speech)
         say = str()
         start_file_index = self.index
-        for speech in speeches:
-            curr = say + speech
+        for _speech in speeches:
+            curr = say + _speech
             if len(curr) > 200:
                 self.save_speech(self.cleaner(say))
                 say = str()
-            say += speech + " "
+            say += _speech + " "
         self.save_speech(say)
         if announce:
             self.background_music()
