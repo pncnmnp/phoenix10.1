@@ -120,6 +120,18 @@ For advice on selecting the best voices, [check out this discussion](https://git
 
 The volume of the background music can be adjusted between `0.1` and `2`. A value of `0.1` will turn off the background music, while a value of `2` doubles its volume.
 
+# Contributing
+
+We always welcome and greatly appreciate contributions! You can contribute in various ways, like by reporting and fixing bugs or suggesting and implementing new features. To start contributing, you can either submit a pull request or open an issue.
+
+If you're submitting a pull request, please make sure to run [`pylint`](https://github.com/pylint-dev/pylint) before submitting. Although it's not mandatory, performing unit tests on your code is highly encouraged.
+
+To run the unit tests, use this command (from the root directory):
+
+```bash
+python3 -m coverage run --omit */site-packages/* -m unittest
+```
+
 # License
 
 The code is open-sourced under the [MIT License](./LICENSE).
