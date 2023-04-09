@@ -43,7 +43,9 @@ from TTS.utils.synthesizer import Synthesizer
 from TTS import __file__ as tts_path
 
 with open("./config.json", "r", encoding="UTF-8") as conf_file:
-    PATH = json.load(conf_file)["PATH"]
+    _CONFIG = json.load(conf_file)
+    PATH = _CONFIG["PATH"]
+    TTS = _CONFIG["TTS"]
 
 
 class Recommend:
@@ -295,7 +297,7 @@ class Dialogue:
         hour = now.hour - 12 if now.hour > 12 else now.hour
         speech = (
             "You are tuning into Phoenix ten point one! "
-            "I am your host Charlie. "
+            f"I am your host {TTS['host_name']}. "
             f"It is {hour} {now.minute} {period} in my studio and "
             "I hope that you are having a splendid day so far!"
         )
@@ -767,7 +769,7 @@ class Dialogue:
         Background music is added during announcements
         """
         background = AudioSegment.from_wav(PATH["backg_music"])
-        background -= 25  # reduce the volume
+        background -= 25 * (1 / TTS["backg_music_vol"])  # reduce the volume
         speech = AudioSegment.from_wav(f"{self.audio_dir}/a{self.index - 1}.wav")
         imposed = background.overlay(speech, position=4000)
         imposed.export(f"{self.audio_dir}/a{self.index - 1}.wav", format="wav")
@@ -815,7 +817,9 @@ class Dialogue:
         the sound is a bit monotonic.
         To mitigate this, it is nice to have a deep voice.
         """
-        wavs = self.synthesizer.tts(text, speaker_name="p267", style_wav="")
+        wavs = self.synthesizer.tts(
+            text, speaker_name=TTS["speaker_name"], style_wav=""
+        )
         self.synthesizer.save_wav(wavs, f"{self.audio_dir}/a{self.index}.wav")
         self.index += 1
 

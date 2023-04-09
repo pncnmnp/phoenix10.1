@@ -92,6 +92,15 @@ python3 radio.py
 ```
 Your entire broadcast would be stored in a `radio.mp3` file.
 
+# TTS configuration
+You can modify the voice of the radio jockey, the name of your host, and the volume of the background music by editing the `./config.json` file. To experiment with different voices, you can use Coqui-ai's `vits` model with the following command:
+```bash
+tts-server --model_name tts_models/en/vctk/vits
+```
+For advice on selecting the best voices, [check out this discussion](https://github.com/coqui-ai/TTS/discussions/1891#discussioncomment-3457122).
+
+The volume of the background music can be adjusted between `0.1` and `2`. A value of `0.1` will turn off the background music, while a value of `2` doubles its volume.
+
 # License
 The code is open-sourced under the [MIT License](./LICENSE).
 

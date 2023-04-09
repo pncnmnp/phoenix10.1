@@ -11,5 +11,10 @@
         "backg_music": "./data/loboloco.wav",
         "songdata": "./data/genres.csv",
         "music_intro_outro": "./data/gpt/music_intro_outro.json"
+    },
+    "TTS": {
+        "backg_music_vol": 1,
+        "host_name": "Charlie",
+        "speaker_name": "p267"
     }
 }
