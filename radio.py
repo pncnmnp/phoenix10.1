@@ -32,7 +32,7 @@ import numpy
 import pandas as pd
 import podcastparser
 from pydub import AudioSegment
-from randimage import get_random_image
+import randimage
 import requests
 import ytmdl
 
@@ -274,7 +274,6 @@ class Dialogue:
 
     def __init__(self, audio_dir=None):
         self.rec = Recommend()
-        self.synthesizer = self.init_speech()
         with open(PATH["schema"], "r", encoding="UTF-8") as file:
             self.schema = json.load(file)
         with open(PATH["phones"], "r", encoding="UTF-8") as file:
@@ -587,6 +586,7 @@ class Dialogue:
         This includes generating segments, synthesizing it, merging it into
         one mp3, and cleaning up the temporary files
         """
+        self.synthesizer = self.init_speech()
         for action, meta in self.schema:
             speech = None
             if action == "no-ads":
@@ -685,7 +685,7 @@ class Dialogue:
         audiofile = eyed3.load(dest)
         # Add poster
         poster_path = f"{self.audio_dir}/poster.jpeg"
-        poster = get_random_image((512, 512))
+        poster = randimage.utils.get_random_image((512, 512))
         matplotlib.image.imsave(poster_path, poster)
         with open(poster_path, "rb") as image_file:
             audiofile.tag.images.set(
@@ -817,6 +817,8 @@ class Dialogue:
         the sound is a bit monotonic.
         To mitigate this, it is nice to have a deep voice.
         """
+        if not hasattr(self, "synthesizer"):
+            self.synthesizer = self.init_speech()
         wavs = self.synthesizer.tts(
             text, speaker_name=TTS["speaker_name"], style_wav=""
         )

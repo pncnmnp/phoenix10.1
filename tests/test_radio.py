@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import MagicMock
 from mock import patch
 from radio import Recommend, Dialogue
 
@@ -11,6 +12,7 @@ from billboard import ChartEntry
 from requests.models import Response
 from itunespy.track import Track
 from pydub.generators import WhiteNoise
+from PIL import Image
 
 
 class Test_Recommend(unittest.TestCase):
@@ -637,14 +639,31 @@ class Test_Dialogue(unittest.TestCase):
         self.assertTrue(not os.path.exists("./test_audio_cleanup/"))
         self.assertTrue(not os.path.exists("./radio.wav"))
 
-    def test_metadata(self):
+    @patch("randimage.utils.get_random_image")
+    @patch("matplotlib.image.imsave")
+    def test_metadata(self, mock_imsave, mock_get_random_image):
+        mock_get_random_image.return_value = MagicMock()
+        mock_imsave.return_value = MagicMock()
+
         metadata_path = f"{self.test_path}/radio.mp3"
         # Generate an mp3 file and fill it with white noise
         audio_file = WhiteNoise().to_audio_segment(duration=1000)
         audio_file.export(metadata_path, format="mp3")
 
+        # Create a simple poster image in jpeg format
+        # https://stackoverflow.com/a/70261284/7543474
+        # License: CC BY-SA 4.0
+        image = Image.new("RGB", (1, 1), color="red")
+        pixels = image.load()
+        pixels[0, 0] = (255, 255, 255)
+        image.save(f"{self.test_path}/poster.jpeg", format="jpeg")
+
         dialogue = Dialogue(self.test_path)
         dialogue.metadata(metadata_path)
+
+        # Restore the original function after the test
+        mock_get_random_image.assert_called_once()
+        mock_imsave.assert_called_once()
 
     @patch("radio.english_cleaners")
     def test_cleaner(self, mock_english_cleaners):
