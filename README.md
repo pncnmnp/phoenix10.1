@@ -132,6 +132,14 @@ To run the unit tests, use this command (from the root directory):
 python3 -m coverage run --omit */site-packages/* -m unittest
 ```
 
+We also recommend using mutation testing with [`mutmut`](https://github.com/boxed/mutmut). To execute `mutmut`, run this command (once again from the root directory):
+
+```bash
+mutmut run --paths-to-mutate ./radio.py --tests-dir ./tests/ --runner 'python3 -m unittest'
+```
+
+Bear in mind that mutation testing is a costly means of evaluating your test suite and can take several hours. So, only use this while suggesting a major change.
+
 # License
 
 The code is open-sourced under the [MIT License](./LICENSE).
