@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 
+import pandas as pd
 from feedparser.util import FeedParserDict
 from billboard import ChartEntry
 from requests.models import Response
@@ -55,7 +56,16 @@ class Test_Recommend(unittest.TestCase):
         self.assertNotEqual(news, None)
         self.assertEqual(len(news), 2)
 
-    def test_playlist_by_genre(self):
+    @patch("pandas.read_csv")
+    def test_playlist_by_genre(self, mock_read_csv):
+        data = {
+            "tags": [["rock", "soft rock"], ["rock", "britpop"]],
+            "artist_name": ["Adele", "Oasis"],
+            "title": ["Hello", "Wonderwall"],
+        }
+        df = pd.DataFrame(data)
+        mock_read_csv.return_value = df
+
         rec = Recommend()
         songs = rec.playlist_by_genre("rock", 2)
         self.assertNotEqual(songs, None)
@@ -676,8 +686,11 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_english_cleaners.call_count, 1)
         self.assertEqual(cleaned, "ae bee sieh ")
 
-    def test_save_speech(self):
+    @patch("TTS.utils.synthesizer.Synthesizer.tts")
+    @patch("TTS.utils.synthesizer.Synthesizer.save_wav")
+    def test_save_speech(self, mock_save_wav, mock_tts):
         dialogue = Dialogue(self.test_path)
         dialogue.index = 10
         dialogue.save_speech("Speech")
-        self.assertTrue(os.path.exists(f"{self.test_path}/a10.wav"))
+        self.assertEqual(mock_tts.call_count, 1)
+        self.assertEqual(mock_save_wav.call_count, 1)
