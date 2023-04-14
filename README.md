@@ -1,5 +1,7 @@
 # Phoenix10.1
 
+[![Coverage Status](https://coveralls.io/repos/github/pncnmnp/phoenix10.1/badge.svg?branch=master)](https://coveralls.io/github/pncnmnp/phoenix10.1?branch=master)
+
 ![Logo of Phoenix10.1 - it is a Phoenix in the sky, disney style](https://user-images.githubusercontent.com/24948340/204136951-3a35b15a-c06c-43ca-b935-dff27651bd79.png)
 
 Phoenix10.1 is a software to generate personalized pre-recorded internet radios that has a text-to-speech based radio jockey.
