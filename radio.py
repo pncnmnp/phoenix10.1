@@ -819,11 +819,12 @@ class Dialogue:
         """
         if not hasattr(self, "synthesizer"):
             self.synthesizer = self.init_speech()
-        wavs = self.synthesizer.tts(
-            text, speaker_name=TTS["speaker_name"], style_wav=""
-        )
-        self.synthesizer.save_wav(wavs, f"{self.audio_dir}/a{self.index}.wav")
-        self.index += 1
+        if text:
+            wavs = self.synthesizer.tts(
+                text, speaker_name=TTS["speaker_name"], style_wav=""
+            )
+            self.synthesizer.save_wav(wavs, f"{self.audio_dir}/a{self.index}.wav")
+            self.index += 1
 
 
 if __name__ == "__main__":
