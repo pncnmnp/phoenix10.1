@@ -295,7 +295,7 @@ class Dialogue:
         period = "PM" if now.hour > 12 else "AM"
         hour = now.hour - 12 if now.hour > 12 else now.hour
         speech = (
-            "You are tuning into Phoenix ten point one! "
+            f"You are tuning into {TTS['station_name']}! "
             f"I am your host {TTS['host_name']}. "
             f"It is {hour} {now.minute} {period} in my studio and "
             "I hope that you are having a splendid day so far!"
@@ -337,7 +337,7 @@ class Dialogue:
         """
         speech = (
             "And that's it for today's broadcast! "
-            "Thanks for listening to Phoenix ten point one! "
+            f"Thanks for listening to {TTS['station_name']}! "
             "Hope you have a great day ahead! See You! "
         )
         return speech
@@ -547,7 +547,7 @@ class Dialogue:
         speech = (
             f"{outro} "
             f'The track was {info["trackName"]} by {info["artistName"]}. '
-            "You are listening to Phoenix ten point one! "
+            f"You are listening to {TTS['station_name']}! "
         )
         return speech
 
