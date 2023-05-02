@@ -295,7 +295,7 @@ class Dialogue:
         period = "PM" if now.hour > 12 else "AM"
         hour = now.hour - 12 if now.hour > 12 else now.hour
         speech = (
-            f"You are tuning into {TTS['station_name']}! "
+            f"You are tuning into {self.cleaner(TTS['station_name'])}! "
             f"I am your host {TTS['host_name']}. "
             f"It is {hour} {now.minute} {period} in my studio and "
             "I hope that you are having a splendid day so far!"
@@ -315,7 +315,7 @@ class Dialogue:
             speech = (
                 "And now it is time for today's daily question. "
                 f"Are you Ready? Alright! Today's question is - {ques} "
-                "You can post your answers on Twitter, hashtag phoenix ten point one, "
+                f"You can post your answers on Twitter, hashtag {self.cleaner(TTS['station_name'])}, "
                 "and we will read it on our broadcast. "
             )
             return speech
@@ -337,7 +337,7 @@ class Dialogue:
         """
         speech = (
             "And that's it for today's broadcast! "
-            f"Thanks for listening to {TTS['station_name']}! "
+            f"Thanks for listening to {self.cleaner(TTS['station_name'])}! "
             "Hope you have a great day ahead! See You! "
         )
         return speech
@@ -547,7 +547,7 @@ class Dialogue:
         speech = (
             f"{outro} "
             f'The track was {info["trackName"]} by {info["artistName"]}. '
-            f"You are listening to {TTS['station_name']}! "
+            f"You are listening to {self.cleaner(TTS['station_name'])}! "
         )
         return speech
 
@@ -680,8 +680,8 @@ class Dialogue:
         """
         today = datetime.date.today().strftime("%d %b %y")
         title = self.rec.title() + ": " + today
-        album = "Phoenix 10.1's broadcast"
-        artist = "Phoenix 10.1"
+        album = f"{TTS['station_name']}'s broadcast"
+        artist = TTS["station_name"]
         audiofile = eyed3.load(dest)
         # Add poster
         poster_path = f"{self.audio_dir}/poster.jpeg"
