@@ -17,7 +17,16 @@ To give it a more radio like feel, it also tells advertisements (from fictional 
 
 # Installation
 
-It is recommended to use Python 3.7 or newer to run the code.
+It is recommended to use Python 3.10 or newer to run the code.
+
+## Quick Start
+
+If you're using a Debian-based distribution, you can install all dependencies using `install.sh`:
+```bash
+sh install.sh
+```
+
+## Manual
 
 This software requires `ffmpeg` and `espeak`. To install them on MacOS:
 
@@ -54,7 +63,7 @@ We recommend running a generic `TTS` command on your shell as this will prompt `
 tts --text "I am excited to demo Phoenix ten point one" --model_name tts_models/en/vctk/vits --speaker_idx p267 --out_path temp.wav
 ```
 
-The `vits` model requires around `110 MB` of storage.
+The `vits` model requires around `150 MB` of storage.
 
 # Creating your radio broadcast
 
