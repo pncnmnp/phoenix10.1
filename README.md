@@ -13,6 +13,7 @@ Phoenix10.1 is a software to generate personalized pre-recorded internet radios 
 # What can it do?
 
 This radio jockey is capable of playing your favorite songs, including tracks from your preferred artist, genre, or Billboard chart. It can automatically discover and play fascinating clips from your preferred podcasts, provide weather updates, and deliver daily news.
+
 For a more authentic radio experience, it brightens up your day with fictional company ads, conducts daily QnA with the audience, and shares
 interesting "On this day..." facts.
 
