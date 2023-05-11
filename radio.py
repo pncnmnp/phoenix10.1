@@ -144,6 +144,18 @@ class Recommend:
         random.shuffle(songs)
         return songs[: int(num_songs)]
 
+    def local_music(self, path, num_songs):
+        """
+        Recommends music from the local music directory
+        """
+        path = os.path.expanduser(path)
+        if os.path.isdir(path):
+            songs = glob.glob(path + "/*.mp3")
+            random.shuffle(songs)
+            return songs[: int(num_songs)]
+        else:
+            return []
+
     def music_intro_outro(self):
         """
         Recommends a music intro/outro
@@ -380,26 +392,29 @@ class Dialogue:
         speech = f"Fun fact! On this day {fact}"
         return speech
 
-    def music(self, song, artist=None):
+    def music(self, song, artist, is_local):
         """
         Fetches a song
         """
-        args = ytmdl.main.arguments()
-        args.SONG_NAME = [song]
-        if artist:
-            args.artist = artist
-        args.choice = 1
-        args.quiet = True
-        ytmdl.defaults.DEFAULT.SONG_DIR = self.audio_dir
-        ytmdl.main.main(args)
-
-        # Logic to change name
-        # ytmdl does not natively support this feature
-        mp3 = glob.glob(os.path.join(self.audio_dir, "*.mp3"))[0]
+        # Use the song path if it is local
+        mp3 = song if is_local else None
+        if not is_local:
+            args = ytmdl.main.arguments()
+            args.SONG_NAME = [song]
+            if artist:
+                args.artist = artist
+            args.choice = 1
+            args.quiet = True
+            ytmdl.defaults.DEFAULT.SONG_DIR = self.audio_dir
+            ytmdl.main.main(args)
+            # Logic to change name
+            # ytmdl does not natively support this feature
+            mp3 = glob.glob(os.path.join(self.audio_dir, "*.mp3"))[0]
         sound = AudioSegment.from_mp3(mp3)
         sound.export(f"{self.audio_dir}/a{self.index}.wav", format="wav")
-        os.remove(mp3)
         self.index += 1
+        if not is_local:
+            os.remove(mp3)
 
     def podcast_dialogue(self, rss_feed, start=True):
         """
@@ -524,12 +539,14 @@ class Dialogue:
         self.index += 1
         self.silence()
 
-    def music_meta(self, song, artist=None, start=True):
+    def music_meta(self, song, artist, is_local, start=True):
         """
-        Fetches meta data for a song
+        Fetches metadata for a song
         NOTE: This is a tough problem to solve as the users only enter the
             song name. Currently, it fetches the first song. Needs improvement!
         """
+        if is_local:
+            return self.local_music_meta(song, start)
         try:
             info = ytmdl.metadata.get_from_itunes(song)[0].json
         except TypeError:
@@ -551,6 +568,26 @@ class Dialogue:
         )
         return speech
 
+    def local_music_meta(self, song, start):
+        """
+        Fetches metadata for a local song
+        """
+        metadata = eyed3.load(song)
+        intro, outro = self.rec.music_intro_outro()
+        if start:
+            speech = (
+                f"{intro} "
+                f"The next song is from your personal collection. "
+                f"{metadata.tag.title} by {metadata.tag.artist}. "
+            )
+        else:
+            speech = (
+                f"{outro} "
+                f"The track was {metadata.tag.title} by {metadata.tag.artist}. "
+                f"You are listening to {self.cleaner(TTS['station_name'])}! "
+            )
+        return speech
+
     def curate_discography(self, action, meta):
         """
         Generates a discography where each element is (artist name, song)
@@ -568,6 +605,14 @@ class Dialogue:
             for chart, num_songs in meta:
                 songs = self.rec.billboard(chart, num_songs)
                 discography += songs
+        elif action == "local-music":
+            for loc_song in meta:
+                songs = (
+                    self.rec.local_music(*loc_song)
+                    if isinstance(loc_song, list)
+                    else [loc_song]
+                )
+                discography += [(None, song) for song in songs]
         else:
             for artist_song in meta:
                 artist, song = (
@@ -596,18 +641,19 @@ class Dialogue:
                 self.speak(speech, announce=True)
                 speech = self.sprinkle_gpt()
                 self.speak(speech)
-            elif action[:5] == "music":
+            elif action.startswith("music") or action.startswith("local-music"):
+                is_local = action.startswith("local-music")
                 songs = self.curate_discography(action, meta)
                 for artist, song in songs:
-                    speech = self.music_meta(song, artist)
+                    speech = self.music_meta(song, artist, is_local)
                     if speech is None:
                         # At this point, it is likely that the
                         # song name is garbage. It is best to skip this song,
                         # than to show the user some random song
                         continue
                     self.speak(speech, announce=True)
-                    self.music(song, artist)
-                    speech = self.music_meta(song, artist, False)
+                    self.music(song, artist, is_local)
+                    speech = self.music_meta(song, artist, is_local, False)
                     self.speak(speech, announce=True)
                     speech = self.sprinkle_gpt()
                     self.speak(speech)

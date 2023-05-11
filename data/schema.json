@@ -3,6 +3,7 @@
     ["music", ["SONG_NAME_1", "SONG_NAME_2"]],
     ["podcast", ["PODCAST_RSS_URL", 15]],
     ["weather", "Streator"],
+    ["local-music", [["PATH_1", 2], ["PATH_2", 2]]],
     ["music-artist", [["ARTIST_NAME_1", 2], ["ARTIST_NAME_2", 3]]],
     ["news", ["business", 5]],
     ["music-genre", [["GENRE_1", 2], ["GENRE_2", 1]]],
