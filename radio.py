@@ -559,12 +559,13 @@ class Dialogue:
             song = song if song else info["trackName"]
             genre = f'The next song is from the world of {info["primaryGenreName"]}. '
         intro, outro = self.rec.music_intro_outro()
+        song_details = f"{song} by {artist}. " if (song and artist) else ""
         if start:
-            speech = f"{intro} " f"{genre}" f"{song} by {artist}. "
+            speech = f"{intro} " f"{genre}" f"{song_details}"
             return speech
         speech = (
             f"{outro} "
-            f"The track was {song} by {artist}. "
+            f"{'The track was ' if song_details != '' else ''}{song_details}"
             f"You are listening to {self.cleaner(TTS['station_name'])}! "
         )
         return speech

@@ -501,6 +501,22 @@ class Test_Dialogue(unittest.TestCase):
         self.assertIn("Example Song", speech)
         self.assertIn("Example Artist", speech)
 
+    @patch("radio.Recommend.music_intro_outro")
+    @patch("eyed3.load")
+    def test_music_meta_local_no_metadata(self, mock_load, mock_music_intro_outro):
+        metadata_mock = MagicMock()
+        metadata_mock.tag.title = "Example Song"
+        metadata_mock.tag.artist = None
+        mock_load.return_value = metadata_mock
+        mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
+
+        dialogue = Dialogue(self.test_path)
+        speech = dialogue.music_meta("Song 1", artist=None, is_local=True, start=True)
+        self.assertEqual(mock_music_intro_outro.call_count, 1)
+        self.assertEqual(mock_load.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+        self.assertNotIn("Example Song", speech)
+
     @patch("radio.Recommend.artist_discography")
     def test_curate_discography_artist(self, mock_artist_discography):
         mock_artist_discography.return_value = [
