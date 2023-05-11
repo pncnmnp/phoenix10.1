@@ -128,6 +128,26 @@ class Test_Recommend(unittest.TestCase):
         for song_name in song_names:
             os.remove(f"./{self.local_song_path}/{song_name}")
 
+    def test_local_music_one_song(self):
+        rec = Recommend()
+        # Create test songs
+        song_path = f"./{self.local_song_path}/song.mp3"
+        Path(song_path).touch()
+
+        songs = rec.local_music(song_path, 1)
+        self.assertNotEqual(songs, [])
+        self.assertEqual(songs, [song_path])
+
+        # Delete test songs
+        os.remove(song_path)
+
+    def test_local_music_one_song_not_exist(self):
+        rec = Recommend()
+        # Create test songs
+        song_path = f"./{self.local_song_path}/no_such_song.mp3"
+        songs = rec.local_music(song_path, 1)
+        self.assertEqual(songs, [])
+
     def test_local_music_empty_dir(self):
         rec = Recommend()
         songs = rec.local_music("./test_songs_does_not_exist/", 2)
@@ -557,13 +577,17 @@ class Test_Dialogue(unittest.TestCase):
         meta = [["ALBUM_PATH_1", 2], ["ALBUM_PATH_2", 2]]
         songs = dialogue.curate_discography(action="local-music", meta=meta)
         self.assertEqual(mock_local_music.call_count, 2)
+        self.assertEqual([name for _, name in songs], mock_local_music.return_value * 2)
         self.assertEqual(len(songs), 4)
 
-    def test_curate_discography_local_song(self):
+    @patch("radio.Recommend.local_music")
+    def test_curate_discography_local_song(self, mock_local_music):
+        mock_local_music.return_value = ["SONG_PATH_X_VALIDATED"]
         dialogue = Dialogue(self.test_path)
         meta = ["SONG_PATH_1", "SONG_PATH_2"]
         songs = dialogue.curate_discography(action="local-music", meta=meta)
         self.assertEqual(len(songs), 2)
+        self.assertEqual([name for _, name in songs], mock_local_music.return_value * 2)
 
     def test_curate_discography_default(self):
         dialogue = Dialogue(self.test_path)

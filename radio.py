@@ -153,6 +153,8 @@ class Recommend:
             songs = glob.glob(path + "/*.mp3")
             random.shuffle(songs)
             return songs[: int(num_songs)]
+        elif os.path.isfile(path) and num_songs == 1:
+            return [path]
         else:
             return []
 
@@ -592,7 +594,7 @@ class Dialogue:
                 songs = (
                     self.rec.local_music(*loc_song)
                     if isinstance(loc_song, list)
-                    else [loc_song]
+                    else self.rec.local_music(loc_song, 1)
                 )
                 discography += [(None, song) for song in songs]
         else:
