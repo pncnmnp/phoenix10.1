@@ -535,13 +535,19 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(len(songs), 2)
 
     @patch("radio.Recommend.local_music")
-    def test_curate_discography_local(self, mock_local_music):
+    def test_curate_discography_local_album(self, mock_local_music):
         mock_local_music.return_value = ["SONG_PATH_1", "SONG_PATH_2"]
         dialogue = Dialogue(self.test_path)
-        meta = [["DIR_PATH_1", 2], ["DIR_PATH_2", 2]]
+        meta = [["ALBUM_PATH_1", 2], ["ALBUM_PATH_2", 2]]
         songs = dialogue.curate_discography(action="local-music", meta=meta)
         self.assertEqual(mock_local_music.call_count, 2)
         self.assertEqual(len(songs), 4)
+
+    def test_curate_discography_local_song(self):
+        dialogue = Dialogue(self.test_path)
+        meta = ["SONG_PATH_1", "SONG_PATH_2"]
+        songs = dialogue.curate_discography(action="local-music", meta=meta)
+        self.assertEqual(len(songs), 2)
 
     def test_curate_discography_default(self):
         dialogue = Dialogue(self.test_path)
