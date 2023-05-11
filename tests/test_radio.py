@@ -486,7 +486,7 @@ class Test_Dialogue(unittest.TestCase):
 
     @patch("radio.Recommend.music_intro_outro")
     @patch("eyed3.load")
-    def test_music_meta_local_end(self, mock_load, mock_music_intro_outro):
+    def test_music_meta_local_no_start(self, mock_load, mock_music_intro_outro):
         metadata_mock = MagicMock()
         metadata_mock.tag.title = "Example Song"
         metadata_mock.tag.artist = "Example Artist"

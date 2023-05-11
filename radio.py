@@ -542,50 +542,31 @@ class Dialogue:
     def music_meta(self, song, artist, is_local, start=True):
         """
         Fetches metadata for a song
-        NOTE: This is a tough problem to solve as the users only enter the
-            song name. Currently, it fetches the first song. Needs improvement!
+        NOTE: This is a tough problem to solve for non-local songs
+        as the users only enter the song name.
+        Currently, it fetches the first song. Needs improvement!
         """
         if is_local:
-            return self.local_music_meta(song, start)
-        try:
-            info = ytmdl.metadata.get_from_itunes(song)[0].json
-        except TypeError:
-            return None
-        info["artistName"] = artist if artist else info["artistName"]
-        info["trackName"] = song if song else info["trackName"]
+            metadata = eyed3.load(song)
+            artist, song = metadata.tag.artist, metadata.tag.title
+            genre = "The next song is from your personal collection. "
+        else:
+            try:
+                info = ytmdl.metadata.get_from_itunes(song)[0].json
+            except TypeError:
+                return None
+            artist = artist if artist else info["artistName"]
+            song = song if song else info["trackName"]
+            genre = f'The next song is from the world of {info["primaryGenreName"]}. '
         intro, outro = self.rec.music_intro_outro()
         if start:
-            speech = (
-                f"{intro} "
-                f'The next song is from the world of {info["primaryGenreName"]}. '
-                f'{info["trackName"]} by {info["artistName"]}. '
-            )
+            speech = f"{intro} " f"{genre}" f"{song} by {artist}. "
             return speech
         speech = (
             f"{outro} "
-            f'The track was {info["trackName"]} by {info["artistName"]}. '
+            f"The track was {song} by {artist}. "
             f"You are listening to {self.cleaner(TTS['station_name'])}! "
         )
-        return speech
-
-    def local_music_meta(self, song, start):
-        """
-        Fetches metadata for a local song
-        """
-        metadata = eyed3.load(song)
-        intro, outro = self.rec.music_intro_outro()
-        if start:
-            speech = (
-                f"{intro} "
-                f"The next song is from your personal collection. "
-                f"{metadata.tag.title} by {metadata.tag.artist}. "
-            )
-        else:
-            speech = (
-                f"{outro} "
-                f"The track was {metadata.tag.title} by {metadata.tag.artist}. "
-                f"You are listening to {self.cleaner(TTS['station_name'])}! "
-            )
         return speech
 
     def curate_discography(self, action, meta):
