@@ -6,6 +6,7 @@ from radio import Recommend, Dialogue
 import json
 import os
 import shutil
+from pathlib import Path
 
 import pandas as pd
 from feedparser.util import FeedParserDict
@@ -17,6 +18,17 @@ from PIL import Image
 
 
 class Test_Recommend(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.local_song_path = "./test_songs/"
+        if not os.path.exists(cls.local_song_path):
+            os.makedirs(cls.local_song_path)
+
+    @classmethod
+    def tearDownClass(cls):
+        if os.path.exists(cls.local_song_path):
+            shutil.rmtree(cls.local_song_path)
+
     @patch("random.random")
     def test_title_day(self, mock_random):
         mock_random.return_value = 0.01
@@ -97,6 +109,49 @@ class Test_Recommend(unittest.TestCase):
         self.assertEqual(mock_ChartData.call_count, 1)
         self.assertNotEqual(songs, None)
         self.assertEqual(len(songs), 2)
+
+    def test_local_music(self):
+        rec = Recommend()
+        # Create test songs
+        song_names = ["song1.mp3", "song2.mp3", "song3.mp3"]
+        for song_name in song_names:
+            Path(f"./{self.local_song_path}/{song_name}").touch()
+
+        songs = rec.local_music(self.local_song_path, 2)
+        self.assertNotEqual(songs, [])
+        self.assertEqual(len(songs), 2)
+        self.assertEqual(
+            set(song_names).issuperset(set(song.split("/")[-1] for song in songs)), True
+        )
+
+        # Delete test songs
+        for song_name in song_names:
+            os.remove(f"./{self.local_song_path}/{song_name}")
+
+    def test_local_music_one_song(self):
+        rec = Recommend()
+        # Create test songs
+        song_path = f"./{self.local_song_path}/song.mp3"
+        Path(song_path).touch()
+
+        songs = rec.local_music(song_path, 1)
+        self.assertNotEqual(songs, [])
+        self.assertEqual(songs, [song_path])
+
+        # Delete test songs
+        os.remove(song_path)
+
+    def test_local_music_one_song_not_exist(self):
+        rec = Recommend()
+        # Create test songs
+        song_path = f"./{self.local_song_path}/no_such_song.mp3"
+        songs = rec.local_music(song_path, 1)
+        self.assertEqual(songs, [])
+
+    def test_local_music_empty_dir(self):
+        rec = Recommend()
+        songs = rec.local_music("./test_songs_does_not_exist/", 2)
+        self.assertEqual(songs, [])
 
     def test_music_intro_outro(self):
         rec = Recommend()
@@ -311,10 +366,25 @@ class Test_Dialogue(unittest.TestCase):
         audio_file.export(f"{self.test_path}/new.mp3", format="mp3")
 
         dialogue = Dialogue(self.test_path)
-        dialogue.music("Song 1", artist="Artist 1")
+        dialogue.music("Song 1", artist="Artist 1", is_local=False)
         self.assertEqual(mock_main.call_count, 1)
         self.assertTrue(not os.path.exists(f"{self.test_path}/new.mp3"))
         self.assertTrue(os.path.exists(f"{self.test_path}/a0.wav"))
+
+    def test_music_local(self):
+        song_path = f"{self.test_path}/local.mp3"
+        # Generate an mp3 file and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(song_path, format="mp3")
+
+        dialogue = Dialogue(self.test_path)
+        dialogue.music(song_path, artist="Artist 1", is_local=True)
+        # As the song is local, song should not be deleted
+        self.assertTrue(os.path.exists(f"{self.test_path}/local.mp3"))
+        self.assertTrue(os.path.exists(f"{self.test_path}/a0.wav"))
+
+        # Clean up
+        os.remove(song_path)
 
     @patch("podcastparser.parse")
     @patch("urllib.request.urlopen")
@@ -385,7 +455,7 @@ class Test_Dialogue(unittest.TestCase):
         ]
         mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
         dialogue = Dialogue(self.test_path)
-        speech = dialogue.music_meta("Song 1", artist=None, start=True)
+        speech = dialogue.music_meta("Song 1", artist=None, is_local=False, start=True)
         self.assertEqual(mock_get_from_itunes.call_count, 1)
         self.assertEqual(mock_music_intro_outro.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
@@ -404,7 +474,7 @@ class Test_Dialogue(unittest.TestCase):
         ]
         mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
         dialogue = Dialogue(self.test_path)
-        speech = dialogue.music_meta("Song 1", artist=None, start=False)
+        speech = dialogue.music_meta("Song 1", artist=None, is_local=False, start=False)
         self.assertEqual(mock_get_from_itunes.call_count, 1)
         self.assertEqual(mock_music_intro_outro.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
@@ -413,9 +483,59 @@ class Test_Dialogue(unittest.TestCase):
     def test_music_meta_none(self, mock_get_from_itunes):
         mock_get_from_itunes.return_value = TypeError
         dialogue = Dialogue(self.test_path)
-        speech = dialogue.music_meta("Song 1", artist=None, start=False)
+        speech = dialogue.music_meta("Song 1", artist=None, is_local=False, start=False)
         self.assertEqual(mock_get_from_itunes.call_count, 1)
         self.assertEqual(speech, None)
+
+    @patch("radio.Recommend.music_intro_outro")
+    @patch("eyed3.load")
+    def test_music_meta_local_start(self, mock_load, mock_music_intro_outro):
+        metadata_mock = MagicMock()
+        metadata_mock.tag.title = "Example Song"
+        metadata_mock.tag.artist = "Example Artist"
+        mock_load.return_value = metadata_mock
+        mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
+
+        dialogue = Dialogue(self.test_path)
+        speech = dialogue.music_meta("Song 1", artist=None, is_local=True, start=True)
+        self.assertEqual(mock_music_intro_outro.call_count, 1)
+        self.assertEqual(mock_load.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+        self.assertIn("Example Song", speech)
+        self.assertIn("Example Artist", speech)
+
+    @patch("radio.Recommend.music_intro_outro")
+    @patch("eyed3.load")
+    def test_music_meta_local_no_start(self, mock_load, mock_music_intro_outro):
+        metadata_mock = MagicMock()
+        metadata_mock.tag.title = "Example Song"
+        metadata_mock.tag.artist = "Example Artist"
+        mock_load.return_value = metadata_mock
+        mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
+
+        dialogue = Dialogue(self.test_path)
+        speech = dialogue.music_meta("Song 1", artist=None, is_local=True, start=False)
+        self.assertEqual(mock_music_intro_outro.call_count, 1)
+        self.assertEqual(mock_load.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+        self.assertIn("Example Song", speech)
+        self.assertIn("Example Artist", speech)
+
+    @patch("radio.Recommend.music_intro_outro")
+    @patch("eyed3.load")
+    def test_music_meta_local_no_metadata(self, mock_load, mock_music_intro_outro):
+        metadata_mock = MagicMock()
+        metadata_mock.tag.title = "Example Song"
+        metadata_mock.tag.artist = None
+        mock_load.return_value = metadata_mock
+        mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
+
+        dialogue = Dialogue(self.test_path)
+        speech = dialogue.music_meta("Song 1", artist=None, is_local=True, start=True)
+        self.assertEqual(mock_music_intro_outro.call_count, 1)
+        self.assertEqual(mock_load.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+        self.assertNotIn("Example Song", speech)
 
     @patch("radio.Recommend.artist_discography")
     def test_curate_discography_artist(self, mock_artist_discography):
@@ -449,6 +569,25 @@ class Test_Dialogue(unittest.TestCase):
         songs = dialogue.curate_discography(action="music-billboard", meta=meta)
         self.assertEqual(mock_billboard.call_count, 2)
         self.assertEqual(len(songs), 2)
+
+    @patch("radio.Recommend.local_music")
+    def test_curate_discography_local_album(self, mock_local_music):
+        mock_local_music.return_value = ["SONG_PATH_1", "SONG_PATH_2"]
+        dialogue = Dialogue(self.test_path)
+        meta = [["ALBUM_PATH_1", 2], ["ALBUM_PATH_2", 2]]
+        songs = dialogue.curate_discography(action="local-music", meta=meta)
+        self.assertEqual(mock_local_music.call_count, 2)
+        self.assertEqual([name for _, name in songs], mock_local_music.return_value * 2)
+        self.assertEqual(len(songs), 4)
+
+    @patch("radio.Recommend.local_music")
+    def test_curate_discography_local_song(self, mock_local_music):
+        mock_local_music.return_value = ["SONG_PATH_X_VALIDATED"]
+        dialogue = Dialogue(self.test_path)
+        meta = ["SONG_PATH_1", "SONG_PATH_2"]
+        songs = dialogue.curate_discography(action="local-music", meta=meta)
+        self.assertEqual(len(songs), 2)
+        self.assertEqual([name for _, name in songs], mock_local_music.return_value * 2)
 
     def test_curate_discography_default(self):
         dialogue = Dialogue(self.test_path)
