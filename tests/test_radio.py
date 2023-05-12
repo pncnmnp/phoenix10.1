@@ -634,6 +634,7 @@ class Test_Dialogue(unittest.TestCase):
         dialogue = Dialogue(self.test_path)
         dialogue.schema = [
             ["no-ads", None],
+            ["no-qna", None],
             ["up", None],
             ["music", [["Song 1", "Artist 1"], ["Song 2", "Artist 2"]]],
             ["podcast", ["PODCAST_RSS_URL", None]],
