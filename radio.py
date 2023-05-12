@@ -620,6 +620,8 @@ class Dialogue:
             speech = None
             if action == "no-ads":
                 self.rec.ad_prob = 0
+            elif action == "no-qna":
+                self.rec.question = False
             elif action == "up":
                 speech = self.wakeup()
                 self.speak(speech, announce=True)
