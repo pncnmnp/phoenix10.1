@@ -113,8 +113,9 @@ Actions available are:
 - `no-ads`
   - removes fictional advertisements from the broadcast. This action should come before `up`
   - characteristic value is ignored
-
-As of yet, the daily QnA cannot be configured and is present in every broadcast.
+- `no-qna`
+  - removes the daily QnA from the broadcast. This action should come before `up`
+  - characteristic value is ignored
 
 # Run
 
