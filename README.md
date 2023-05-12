@@ -128,7 +128,7 @@ Your entire broadcast would be stored in a `radio.mp3` file.
 
 # TTS configuration
 
-You can modify the voice of the radio jockey, the name of your host, and the volume of the background music by editing the `./config.json` file. To experiment with different voices, you can use Coqui-ai's `vits` model with the following command:
+You can modify the voice of the radio jockey, the name of your radio station/host, and the volume of the background music by editing the `./config.json` file. To experiment with different voices, you can use Coqui-ai's `vits` model with the following command:
 
 ```bash
 tts-server --model_name tts_models/en/vctk/vits
