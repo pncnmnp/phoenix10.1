@@ -80,6 +80,11 @@ Actions available are:
 - `music`
   - fetches and streams music
   - characteristic should contain list of song names
+- `local-music`
+  - streams music using locally stored songs
+  - characteristic should contain either:
+    - **list of paths to the audio files**
+    - **list of lists** of the format `[album_path, num_of_songs]`
 - `music-artist`
   - fetches and streams music (based on the artist names)
   - characteristic should contain **list of lists** of the format `[artist_name, num_of_songs]`
