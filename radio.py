@@ -57,10 +57,9 @@ _logger = logging.getLogger()
 _logger.setLevel(logging.INFO)
 
 
-class SuppressThirdPartyLogs:
+class _SuppressTTSLogs:
     """
-    Suppresses print statements from third party libraries like
-    Coqui-ai's TTS and FFmpeg
+    Suppresses print statements from Coqui-ai's TTS
     From: https://stackoverflow.com/a/45669280/7543474
     Licensed under CC BY-SA 4.0
     """
@@ -907,7 +906,7 @@ class Dialogue:
         """
         Initializes the synthesizer for tts
         """
-        with SuppressThirdPartyLogs():
+        with _SuppressTTSLogs():
             args = create_argparser().parse_args()
             args.model_name = "tts_models/en/vctk/vits"
             path = Path(tts_path).parent / "./.models.json"
@@ -944,10 +943,10 @@ class Dialogue:
         if text.strip() != "":
             logging.info(f"Synthesizing speech for - {text}")
         if not hasattr(self, "synthesizer"):
-            with SuppressThirdPartyLogs():
+            with _SuppressTTSLogs():
                 self.synthesizer = self.init_speech()
         if text:
-            with SuppressThirdPartyLogs():
+            with _SuppressTTSLogs():
                 wavs = self.synthesizer.tts(
                     text, speaker_name=TTS["speaker_name"], style_wav=""
                 )
