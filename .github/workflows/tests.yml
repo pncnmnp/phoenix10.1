@@ -23,12 +23,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
           sudo apt-get install -y ffmpeg espeak
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m nltk.downloader punkt
-          ~/.local/bin/tts --text "Testing Phoenix ten point one" --model_name tts_models/en/vctk/vits --speaker_idx p267 --out_path temp.wav
+          tts --text "Testing Phoenix ten point one" --model_name tts_models/en/vctk/vits --speaker_idx p267 --out_path temp.wav
           rm temp.wav
 
       - name: Run tests with coverage
