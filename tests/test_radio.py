@@ -1,3 +1,4 @@
+import glob
 import unittest
 from unittest.mock import MagicMock
 from mock import patch
@@ -359,31 +360,54 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_on_this_day.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
 
-    @patch("radio.ytmdl.main.main")
-    def test_music(self, mock_main):
+    @patch("radio.ytmdl.core.search")
+    @patch("yt_dlp.YoutubeDL.download")
+    def test_music(self, mock_download, mock_search):
         # Generate an mp3 file and fill it with white noise
         audio_file = WhiteNoise().to_audio_segment(duration=1000)
         audio_file.export(f"{self.test_path}/new.mp3", format="mp3")
+        mock_search.return_value = "YOUTUBE_URL", "Song Title"
+        mock_download.return_value = 0
 
         dialogue = Dialogue(self.test_path)
-        dialogue.music("Song 1", artist="Artist 1", is_local=False)
-        self.assertEqual(mock_main.call_count, 1)
+        dialogue.music("Song 1", artist="Artist 1")
+        self.assertEqual(mock_search.call_count, 1)
+        self.assertEqual(mock_download.call_count, 1)
         self.assertTrue(not os.path.exists(f"{self.test_path}/new.mp3"))
-        self.assertTrue(os.path.exists(f"{self.test_path}/a0.wav"))
+        self.assertTrue(os.path.exists(f"{self.test_path}/song.mp3"))
 
-    def test_music_local(self):
-        song_path = f"{self.test_path}/local.mp3"
+    def test_postprocess_music(self):
         # Generate an mp3 file and fill it with white noise
         audio_file = WhiteNoise().to_audio_segment(duration=1000)
-        audio_file.export(song_path, format="mp3")
+        audio_file.export(f"{self.test_path}/song.mp3", format="mp3")
+        audio_file.export(f"{self.test_path}/a0.wav", format="wav")
 
         dialogue = Dialogue(self.test_path)
-        dialogue.music(song_path, artist="Artist 1", is_local=True)
-        # As the song is local, song should not be deleted
-        self.assertTrue(os.path.exists(f"{self.test_path}/local.mp3"))
-        self.assertTrue(os.path.exists(f"{self.test_path}/a0.wav"))
+        dialogue.index += 2
+        dialogue.postprocess_music("Song 1", is_local=False)
+        self.assertTrue(os.path.exists(f"{self.test_path}/a2.wav"))
+        self.assertTrue(not os.path.exists(f"{self.test_path}/song.mp3"))
 
-        # Clean up
+        # Delete test songs
+        os.remove(f"{self.test_path}/a0.wav")
+        os.remove(f"{self.test_path}/a2.wav")
+
+    def test_postprocess_music_local(self):
+        # Generate an mp3 file and fill it with white noise
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        song_path = f"{self.test_path}/song.mp3"
+        audio_file.export(song_path, format="mp3")
+        audio_file.export(f"{self.test_path}/a0.wav", format="wav")
+
+        dialogue = Dialogue(self.test_path)
+        dialogue.index += 2
+        dialogue.postprocess_music(song_path, is_local=True)
+        self.assertTrue(os.path.exists(f"{self.test_path}/a2.wav"))
+        self.assertTrue(os.path.exists(f"{self.test_path}/song.mp3"))
+
+        # Delete test songs
+        os.remove(f"{self.test_path}/a0.wav")
+        os.remove(f"{self.test_path}/a2.wav")
         os.remove(song_path)
 
     @patch("podcastparser.parse")
@@ -442,9 +466,17 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_remove.call_count, 1)
 
     @patch("radio.Recommend.music_intro_outro")
-    @patch("radio.ytmdl.metadata.get_from_itunes")
-    def test_music_meta_start(self, mock_get_from_itunes, mock_music_intro_outro):
-        mock_get_from_itunes.return_value = [
+    @patch("itunespy.search_track")
+    def test_music_meta_start(self, mock_search_track, mock_music_intro_outro):
+        # Generate an mp3 file, fill it with white noise and add metadata
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(
+            f"{self.test_path}/song.mp3",
+            format="mp3",
+            tags={"artist": "Artist 1", "title": "Song 1"},
+        )
+
+        mock_search_track.return_value = [
             Track(
                 json={
                     "artistName": "Artist 1",
@@ -456,14 +488,26 @@ class Test_Dialogue(unittest.TestCase):
         mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
         dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, is_local=False, start=True)
-        self.assertEqual(mock_get_from_itunes.call_count, 1)
+        self.assertEqual(mock_search_track.call_count, 1)
         self.assertEqual(mock_music_intro_outro.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
+        self.assertIn("Artist 1", speech)
+
+        # Delete test song
+        os.remove(f"{self.test_path}/song.mp3")
 
     @patch("radio.Recommend.music_intro_outro")
-    @patch("radio.ytmdl.metadata.get_from_itunes")
-    def test_music_meta_no_start(self, mock_get_from_itunes, mock_music_intro_outro):
-        mock_get_from_itunes.return_value = [
+    @patch("itunespy.search_track")
+    def test_music_meta_no_start(self, mock_search_track, mock_music_intro_outro):
+        # Generate an mp3 file, fill it with white noise and add metadata
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(
+            f"{self.test_path}/song.mp3",
+            format="mp3",
+            tags={"artist": "Artist 1", "title": "Song 1"},
+        )
+
+        mock_search_track.return_value = [
             Track(
                 json={
                     "artistName": "Artist 1",
@@ -475,17 +519,48 @@ class Test_Dialogue(unittest.TestCase):
         mock_music_intro_outro.return_value = ("Intro speech", "Outro speech")
         dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, is_local=False, start=False)
-        self.assertEqual(mock_get_from_itunes.call_count, 1)
+        self.assertEqual(mock_search_track.call_count, 1)
         self.assertEqual(mock_music_intro_outro.call_count, 1)
         self.assertEqual(isinstance(speech, str), True)
+        self.assertIn("Artist 1", speech)
 
-    @patch("radio.ytmdl.metadata.get_from_itunes")
-    def test_music_meta_none(self, mock_get_from_itunes):
-        mock_get_from_itunes.return_value = TypeError
+        # Delete test song
+        os.remove(f"{self.test_path}/song.mp3")
+
+    @patch("itunespy.search_track")
+    @patch("time.sleep")
+    def test_music_meta_exception(self, mock_sleep, mock_search_track):
+        # Generate an mp3 file, fill it with white noise and add metadata
+        audio_file = WhiteNoise().to_audio_segment(duration=1000)
+        audio_file.export(
+            f"{self.test_path}/song.mp3",
+            format="mp3",
+            tags={"artist": "Artist 1", "title": "Song 1"},
+        )
+
+        mock_search_track.side_effect = [
+            Exception("No results found"),
+            [
+                Track(
+                    json={
+                        "artistName": "Artist 1",
+                        "trackName": "Track 1",
+                        "primaryGenreName": "Genre 1",
+                    }
+                )
+            ],
+        ]
+        mock_sleep.return_value = None
+
         dialogue = Dialogue(self.test_path)
         speech = dialogue.music_meta("Song 1", artist=None, is_local=False, start=False)
-        self.assertEqual(mock_get_from_itunes.call_count, 1)
-        self.assertEqual(speech, None)
+        self.assertEqual(mock_search_track.call_count, 2)
+        self.assertEqual(mock_sleep.call_count, 1)
+        self.assertEqual(isinstance(speech, str), True)
+        self.assertIn("Artist 1", speech)
+
+        # Delete test song
+        os.remove(f"{self.test_path}/song.mp3")
 
     @patch("radio.Recommend.music_intro_outro")
     @patch("eyed3.load")
@@ -599,6 +674,7 @@ class Test_Dialogue(unittest.TestCase):
     @patch("radio.Dialogue.speak")
     @patch("radio.Dialogue.sprinkle_gpt")
     @patch("radio.Dialogue.curate_discography")
+    @patch("radio.Dialogue.postprocess_music")
     @patch("radio.Dialogue.music_meta")
     @patch("radio.Dialogue.music")
     @patch("radio.Dialogue.podcast_dialogue")
@@ -621,12 +697,13 @@ class Test_Dialogue(unittest.TestCase):
         mock_podcast_dialogue,
         mock_music,
         mock_music_meta,
+        mock_postprocess_music,
         mock_curate_discography,
         mock_sprinkle_gpt,
         mock_speak,
         mock_wakeup,
     ):
-        mock_music_meta.side_effect = ["Speech", "Speech", None]
+        mock_music.side_effect = [0, 1]
         mock_curate_discography.return_value = [
             ["Artist 1", "Song 1"],
             ["Artist 2", "Song 2"],
@@ -655,8 +732,9 @@ class Test_Dialogue(unittest.TestCase):
         self.assertEqual(mock_podcast_dialogue.call_count, 2)
 
         self.assertEqual(mock_curate_discography.call_count, 1)
-        self.assertEqual(mock_music.call_count, 1)
-        self.assertEqual(mock_music_meta.call_count, 3)
+        self.assertEqual(mock_music.call_count, 2)
+        self.assertEqual(mock_music_meta.call_count, 2)
+        self.assertEqual(mock_postprocess_music.call_count, 1)
         self.assertEqual(mock_speak.call_count, 11)
 
         self.assertEqual(mock_sprinkle_gpt.call_count, 2)
