@@ -55,7 +55,7 @@ with open("./config.json", "r", encoding="UTF-8") as conf_file:
 
 _logger = logging.getLogger()
 _logger.setLevel(logging.INFO)
-
+logging.getLogger('musicbrainzngs').setLevel(logging.WARNING)
 
 class _SuppressTTSLogs:
     """
@@ -498,7 +498,7 @@ class Dialogue:
         else:
             speech = (
                 "Wow! That was something, wasn't it? "
-                "The podcast you just listened to was"
+                "The podcast you just listened to was "
                 f"{parsed['title']} from {parsed['itunes_author']}. "
                 "If you enjoyed it, please do check them out."
             )
@@ -549,6 +549,9 @@ class Dialogue:
         pipe = subprocess.Popen(
             [
                 "ffmpeg",
+                "-hide_banner", 
+                "-loglevel", 
+                "error",
                 "-i",
                 f"{audio_file}",
                 "-f",
@@ -874,7 +877,7 @@ class Dialogue:
             src = f"{self.audio_dir}/a{index}.wav"
             dest = f"{self.audio_dir}/out.wav"
             slowit = FFmpeg(
-                global_options=["-y"],
+                global_options=["-y", "-hide_banner", "-loglevel", "error"],
                 inputs={src: None},
                 outputs={dest: ["-filter:a", "atempo=0.85"]},
             )
