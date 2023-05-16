@@ -1,0 +1,36 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.10]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m nltk.downloader punkt
+          ~/.local/bin/tts --text "Testing Phoenix ten point one" --model_name tts_models/en/vctk/vits --speaker_idx p267 --out_path temp.wav
+          rm temp.wav
+
+      - name: Run tests with coverage
+        run: |
+          python -m coverage run --omit '*/site-packages/*' -m unittest
