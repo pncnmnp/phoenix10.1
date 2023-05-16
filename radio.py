@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 import urllib.request
 import uuid
 
@@ -25,8 +26,10 @@ import eyed3
 from eyed3.id3.frames import ImageFrame
 from feedparser import parse
 from ffmpy import FFmpeg
+import itunespy
 import matplotlib
 import musicbrainzngs
+import nltk
 from nltk import sent_tokenize
 import numpy
 import pandas as pd
@@ -35,6 +38,7 @@ from pydub import AudioSegment
 import randimage
 import requests
 import ytmdl
+import yt_dlp
 
 from TTS.server.server import create_argparser
 from TTS.tts.utils.text.cleaners import english_cleaners
@@ -394,29 +398,58 @@ class Dialogue:
         speech = f"Fun fact! On this day {fact}"
         return speech
 
-    def music(self, song, artist, is_local):
+    def music(self, song, artist):
         """
         Fetches a song
         """
-        # Use the song path if it is local
-        mp3 = song if is_local else None
-        if not is_local:
-            args = ytmdl.main.arguments()
-            args.SONG_NAME = [song]
-            if artist:
-                args.artist = artist
-            args.choice = 1
-            args.quiet = True
-            ytmdl.defaults.DEFAULT.SONG_DIR = self.audio_dir
-            ytmdl.main.main(args)
-            # Logic to change name
-            # ytmdl does not natively support this feature
-            mp3 = glob.glob(os.path.join(self.audio_dir, "*.mp3"))[0]
-        sound = AudioSegment.from_mp3(mp3)
-        sound.export(f"{self.audio_dir}/a{self.index}.wav", format="wav")
+        args = ytmdl.main.arguments()
+        args.SONG_NAME = [song]
+        if artist:
+            args.artist = artist
+        args.choice = 1
+        args.quiet = True
+        url, _ = ytmdl.core.search(args.SONG_NAME[0], args)
+
+        # Download the song with metadata
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                },
+                {"key": "FFmpegMetadata"},
+            ],
+            "outtmpl": f"{self.audio_dir}/%(title)s.%(ext)s",
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            error_code = ydl.download([url])
+            if error_code != 0:
+                return 1
+        mp3 = glob.glob(f"{self.audio_dir}/*.mp3")[0]
+        os.rename(mp3, f"{self.audio_dir}/song.mp3")
+        return 0
+
+    def postprocess_music(self, song, is_local):
+        """
+        Generate the wav file for music and sandwich it between the intro and outro
+        """
+        song_path = song if is_local else f"{self.audio_dir}/song.mp3"
+        sound = AudioSegment.from_mp3(song_path)
+
+        # Rename the previous outro file to current index
+        # as the previous outro index will be used for this song
+        # This ensures that the song is sandwiched between intro and outro
+        # NOTE: index - 1 is a silence clip
+        os.rename(
+            f"{self.audio_dir}/a{self.index - 2}.wav",
+            f"{self.audio_dir}/a{self.index}.wav",
+        )
+        sound.export(f"{self.audio_dir}/a{self.index - 2}.wav", format="wav")
         self.index += 1
         if not is_local:
-            os.remove(mp3)
+            os.remove(song_path)
 
     def podcast_dialogue(self, rss_feed, start=True):
         """
@@ -553,13 +586,24 @@ class Dialogue:
             artist, song = metadata.tag.artist, metadata.tag.title
             genre = "The next song is from your personal collection. "
         else:
+            fetched_artist = eyed3.load(f"{self.audio_dir}/song.mp3").tag.artist
+
+            # Compare the artist name fetched from song
+            # with artists found from iTunes and choose the most similar one
             try:
-                info = ytmdl.metadata.get_from_itunes(song)[0].json
-            except TypeError:
-                return None
-            artist = artist if artist else info["artistName"]
-            song = song if song else info["trackName"]
-            genre = f'The next song is from the world of {info["primaryGenreName"]}. '
+                itunes_metadata = itunespy.search_track(song, country="US", limit=100)
+            except:
+                time.sleep(80)
+                itunes_metadata = itunespy.search_track(song, country="US", limit=100)
+            most_accurate = sorted(
+                [song_info.json for song_info in itunes_metadata],
+                key=lambda song_info: nltk.edit_distance(
+                    song_info["artistName"], fetched_artist
+                ),
+            )[0]
+            artist = artist if artist else most_accurate["artistName"]
+            song = song if song else most_accurate["trackName"]
+            genre = f'The next song is from the world of {most_accurate["primaryGenreName"]}. '
         intro, outro = self.rec.music_intro_outro()
         song_details = f"{song} by {artist}. " if (song and artist) else ""
         if start:
@@ -631,16 +675,18 @@ class Dialogue:
                 is_local = action.startswith("local-music")
                 songs = self.curate_discography(action, meta)
                 for artist, song in songs:
+                    if not is_local:
+                        error = self.music(song, artist)
+                        if error:
+                            # At this point, it is likely that the
+                            # song name is garbage. It is best to skip this song,
+                            # than to show the user some random song
+                            continue
                     speech = self.music_meta(song, artist, is_local)
-                    if speech is None:
-                        # At this point, it is likely that the
-                        # song name is garbage. It is best to skip this song,
-                        # than to show the user some random song
-                        continue
                     self.speak(speech, announce=True)
-                    self.music(song, artist, is_local)
                     speech = self.music_meta(song, artist, is_local, False)
                     self.speak(speech, announce=True)
+                    self.postprocess_music(song, is_local)
                     speech = self.sprinkle_gpt()
                     self.speak(speech)
             elif action == "podcast":
