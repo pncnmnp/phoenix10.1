@@ -376,6 +376,21 @@ class Test_Dialogue(unittest.TestCase):
         self.assertTrue(not os.path.exists(f"{self.test_path}/new.mp3"))
         self.assertTrue(os.path.exists(f"{self.test_path}/song.mp3"))
 
+        # Delete test song
+        os.remove(f"{self.test_path}/song.mp3")
+
+    @patch("radio.ytmdl.core.search")
+    @patch("yt_dlp.YoutubeDL.download")
+    def test_music_error(self, mock_download, mock_search):
+        mock_search.return_value = "YOUTUBE_URL", "Song Title"
+        mock_download.return_value = 1
+
+        dialogue = Dialogue(self.test_path)
+        dialogue.music("Song 1", artist="Artist 1")
+        self.assertEqual(mock_search.call_count, 1)
+        self.assertEqual(mock_download.call_count, 1)
+        self.assertTrue(not os.path.exists(f"{self.test_path}/song.mp3"))
+
     def test_postprocess_music(self):
         # Generate an mp3 file and fill it with white noise
         audio_file = WhiteNoise().to_audio_segment(duration=1000)
