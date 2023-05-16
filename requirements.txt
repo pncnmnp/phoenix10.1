@@ -9,9 +9,11 @@ musicbrainzngs==0.7.1
 nltk==3.7
 numpy==1.22.4
 pandas==1.4.4
+Pillow==9.5.0
 podcastparser==0.6.9
 pydub==0.25.1
 randimage==1.2
 requests==2.28.1
-TTS==0.13.0
+TTS==0.13.3
+yt_dlp==2023.3.4
 ytmdl==2022.3.16

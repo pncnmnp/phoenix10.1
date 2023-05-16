@@ -438,10 +438,9 @@ class Dialogue:
         song_path = song if is_local else f"{self.audio_dir}/song.mp3"
         sound = AudioSegment.from_mp3(song_path)
 
-        # Rename the previous wav file (outro) to current index
-        # as the previous index will be used for this song
-        # This ensures that the song is sandwiched between
-        # the intro and outro
+        # Rename the previous outro file to current index
+        # as the previous outro index will be used for this song
+        # This ensures that the song is sandwiched between intro and outro
         # NOTE: index - 1 is a silence clip
         os.rename(
             f"{self.audio_dir}/a{self.index - 2}.wav",
@@ -587,21 +586,19 @@ class Dialogue:
             artist, song = metadata.tag.artist, metadata.tag.title
             genre = "The next song is from your personal collection. "
         else:
-            # Search for the song metadata in the fetched mp3 file
             fetched_artist = eyed3.load(f"{self.audio_dir}/song.mp3").tag.artist
 
-            # Compare the artist name fetched from the metadata
-            # with the artists found by iTunes
-            # and choose the most similar one
+            # Compare the artist name fetched from song
+            # with artists found from iTunes and choose the most similar one
             try:
                 itunes_metadata = itunespy.search_track(song, country="US", limit=100)
             except:
                 time.sleep(80)
                 itunes_metadata = itunespy.search_track(song, country="US", limit=100)
             most_accurate = sorted(
-                [info.json for info in itunes_metadata],
-                key=lambda song_name: nltk.edit_distance(
-                    song_name["artistName"], fetched_artist
+                [song_info.json for song_info in itunes_metadata],
+                key=lambda song_info: nltk.edit_distance(
+                    song_info["artistName"], fetched_artist
                 ),
             )[0]
             artist = artist if artist else most_accurate["artistName"]
