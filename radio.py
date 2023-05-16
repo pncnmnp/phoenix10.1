@@ -55,7 +55,8 @@ with open("./config.json", "r", encoding="UTF-8") as conf_file:
 
 _logger = logging.getLogger()
 _logger.setLevel(logging.INFO)
-logging.getLogger('musicbrainzngs').setLevel(logging.WARNING)
+logging.getLogger("musicbrainzngs").setLevel(logging.WARNING)
+
 
 class _SuppressTTSLogs:
     """
@@ -549,8 +550,8 @@ class Dialogue:
         pipe = subprocess.Popen(
             [
                 "ffmpeg",
-                "-hide_banner", 
-                "-loglevel", 
+                "-hide_banner",
+                "-loglevel",
                 "error",
                 "-i",
                 f"{audio_file}",
@@ -753,6 +754,10 @@ class Dialogue:
             elif action == "end":
                 speech = self.over()
                 self.speak(speech, announce=True)
+        logging.info(
+            "Starting post-processing to create the final broadcast. "
+            "This may take a while."
+        )
         self.radio()
         self.cleanup()
         logging.info("Broadcast created.")
@@ -784,7 +789,7 @@ class Dialogue:
         if Path(dest).is_file():
             os.remove(dest)
         convert = FFmpeg(
-            global_options=["-hide_banner", "-loglevel", "error"],
+            global_options=["-loglevel", "error"],
             inputs={src: None},
             outputs={dest: ["-acodec", "libmp3lame", "-b:a", "128k"]},
         )
