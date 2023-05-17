@@ -12,11 +12,13 @@ Author: Parth Parikh (parthparikh1999p@gmail.com)
 import datetime
 import glob
 import json
+import logging
 import random
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import time
 import urllib.request
 import uuid
@@ -50,6 +52,26 @@ with open("./config.json", "r", encoding="UTF-8") as conf_file:
     _CONFIG = json.load(conf_file)
     PATH = _CONFIG["PATH"]
     TTS = _CONFIG["TTS"]
+
+_logger = logging.getLogger()
+_logger.setLevel(logging.INFO)
+logging.getLogger("musicbrainzngs").setLevel(logging.WARNING)
+
+
+class _SuppressTTSLogs:
+    """
+    Suppresses print statements from Coqui-ai's TTS
+    From: https://stackoverflow.com/a/45669280/7543474
+    Licensed under CC BY-SA 4.0
+    """
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 
 class Recommend:
@@ -326,9 +348,11 @@ class Dialogue:
         """
         company, speech = self.rec.advertisement()
         if speech is not None:
+            logging.info(f"Generating fictional advertisement for {company}.")
             end = f" Thank you {company} for sponsoring today's broadcast. "
             return speech + end
         if self.rec.question is None:
+            logging.info("Generating daily question.")
             ques = self.rec.daily_question()
             speech = (
                 "And now it is time for today's daily question. "
@@ -338,6 +362,7 @@ class Dialogue:
             )
             return speech
         if self.rec.question:
+            logging.info("Generating daily question response.")
             ans = self.rec.daily_question(question=False)
             fname, lname, loc = self.rec.person()
             speech = (
@@ -364,6 +389,7 @@ class Dialogue:
         """
         Speech to convey the daily news for a specific category
         """
+        logging.info(f"Fetching {k} news items for {category}.")
         articles = self.rec.news(category, k)
         start = f"Now for today's {category} news. "
         end = f"And that's the {category} news."
@@ -378,6 +404,7 @@ class Dialogue:
         """
         Speech for the weather forecast
         """
+        logging.info(f"Fetching weather forecast for {location}.")
         forecast = self.rec.weather(location)
         loc = location if location is not None else "your region"
         speech = (
@@ -409,6 +436,7 @@ class Dialogue:
         args.choice = 1
         args.quiet = True
         url, _ = ytmdl.core.search(args.SONG_NAME[0], args)
+        logging.info(f"Fetching song from {url}.")
 
         # Download the song with metadata
         ydl_opts = {
@@ -471,7 +499,7 @@ class Dialogue:
         else:
             speech = (
                 "Wow! That was something, wasn't it? "
-                "The podcast you just listened to was"
+                "The podcast you just listened to was "
                 f"{parsed['title']} from {parsed['itunes_author']}. "
                 "If you enjoyed it, please do check them out."
             )
@@ -483,6 +511,9 @@ class Dialogue:
         """
         # Download the podcast
         parsed = podcastparser.parse(rss_feed, urllib.request.urlopen(rss_feed))
+        logging.info(
+            f"Finding a relevant clip from podcast - {parsed['title']} from {parsed['itunes_author']}."
+        )
         podcast_link = parsed["episodes"][0]["enclosures"][0]["url"]
         audio_file = f"{self.audio_dir}/a{self.index}.mp3"
         subprocess.run(
@@ -519,6 +550,9 @@ class Dialogue:
         pipe = subprocess.Popen(
             [
                 "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
                 "-i",
                 f"{audio_file}",
                 "-f",
@@ -566,6 +600,9 @@ class Dialogue:
             optimal_clip = podcast_audio[optimal_start * 1000 : optimal_end * 1000]
         except IndexError:
             # If no silence is found, just take the first "duration" minutes
+            logging.warning(
+                f"No relevant podcast clip found. Using the first {duration} minutes."
+            )
             optimal_start, optimal_end = None, None
             optimal_clip = AudioSegment.from_mp3(audio_file)[: duration_sec * 1000]
 
@@ -593,6 +630,9 @@ class Dialogue:
             try:
                 itunes_metadata = itunespy.search_track(song, country="US", limit=100)
             except:
+                logging.warning(
+                    "Metadata search failed. Trying again after 80 seconds."
+                )
                 time.sleep(80)
                 itunes_metadata = itunespy.search_track(song, country="US", limit=100)
             most_accurate = sorted(
@@ -659,13 +699,17 @@ class Dialogue:
         This includes generating segments, synthesizing it, merging it into
         one mp3, and cleaning up the temporary files
         """
+        logging.info("Creating a broadcast.")
         self.synthesizer = self.init_speech()
         for action, meta in self.schema:
+            logging.info(f"Generating {action} segment.")
             speech = None
             if action == "no-ads":
                 self.rec.ad_prob = 0
+                logging.info("Disabled ads.")
             elif action == "no-qna":
                 self.rec.question = False
+                logging.info("Disabled QnA.")
             elif action == "up":
                 speech = self.wakeup()
                 self.speak(speech, announce=True)
@@ -678,9 +722,7 @@ class Dialogue:
                     if not is_local:
                         error = self.music(song, artist)
                         if error:
-                            # At this point, it is likely that the
-                            # song name is garbage. It is best to skip this song,
-                            # than to show the user some random song
+                            logging.warning(f"Failed to download {song}. Skipping.")
                             continue
                     speech = self.music_meta(song, artist, is_local)
                     self.speak(speech, announce=True)
@@ -692,6 +734,7 @@ class Dialogue:
             elif action == "podcast":
                 rss_feed, duration = meta
                 if duration is None:
+                    logging.warning("Duration not specified. Setting it to 15 mins.")
                     duration = 15
                 speech = self.podcast_dialogue(rss_feed)
                 self.speak(speech, announce=True)
@@ -711,8 +754,13 @@ class Dialogue:
             elif action == "end":
                 speech = self.over()
                 self.speak(speech, announce=True)
+        logging.info(
+            "Starting post-processing to create the final broadcast. "
+            "This may take a while."
+        )
         self.radio()
         self.cleanup()
+        logging.info("Broadcast created.")
         return 0
 
     def radio(self):
@@ -741,6 +789,7 @@ class Dialogue:
         if Path(dest).is_file():
             os.remove(dest)
         convert = FFmpeg(
+            global_options=["-loglevel", "error"],
             inputs={src: None},
             outputs={dest: ["-acodec", "libmp3lame", "-b:a", "128k"]},
         )
@@ -833,7 +882,7 @@ class Dialogue:
             src = f"{self.audio_dir}/a{index}.wav"
             dest = f"{self.audio_dir}/out.wav"
             slowit = FFmpeg(
-                global_options=["-y"],
+                global_options=["-y", "-hide_banner", "-loglevel", "error"],
                 inputs={src: None},
                 outputs={dest: ["-filter:a", "atempo=0.85"]},
             )
@@ -846,6 +895,7 @@ class Dialogue:
         """
         Background music is added during announcements
         """
+        logging.info("Adding background music in this announcement.")
         background = AudioSegment.from_wav(PATH["backg_music"])
         background -= 25 * (1 / TTS["backg_music_vol"])  # reduce the volume
         speech = AudioSegment.from_wav(f"{self.audio_dir}/a{self.index - 1}.wav")
@@ -864,27 +914,30 @@ class Dialogue:
         """
         Initializes the synthesizer for tts
         """
-        args = create_argparser().parse_args()
-        args.model_name = "tts_models/en/vctk/vits"
-        path = Path(tts_path).parent / "./.models.json"
-        manager = ModelManager(path)
-        model_path, config_path, model_item = manager.download_model(args.model_name)
-        args.vocoder_name = (
-            model_item["default_vocoder"]
-            if args.vocoder_name is None
-            else args.vocoder_name
-        )
-        synthesizer = Synthesizer(
-            tts_checkpoint=model_path,
-            tts_config_path=config_path,
-            tts_speakers_file=None,
-            tts_languages_file=None,
-            vocoder_checkpoint=None,
-            vocoder_config=None,
-            encoder_checkpoint="",
-            encoder_config="",
-            use_cuda=args.use_cuda,
-        )
+        with _SuppressTTSLogs():
+            args = create_argparser().parse_args()
+            args.model_name = "tts_models/en/vctk/vits"
+            path = Path(tts_path).parent / "./.models.json"
+            manager = ModelManager(path)
+            model_path, config_path, model_item = manager.download_model(
+                args.model_name
+            )
+            args.vocoder_name = (
+                model_item["default_vocoder"]
+                if args.vocoder_name is None
+                else args.vocoder_name
+            )
+            synthesizer = Synthesizer(
+                tts_checkpoint=model_path,
+                tts_config_path=config_path,
+                tts_speakers_file=None,
+                tts_languages_file=None,
+                vocoder_checkpoint=None,
+                vocoder_config=None,
+                encoder_checkpoint="",
+                encoder_config="",
+                use_cuda=args.use_cuda,
+            )
         return synthesizer
 
     def save_speech(self, text):
@@ -895,12 +948,16 @@ class Dialogue:
         the sound is a bit monotonic.
         To mitigate this, it is nice to have a deep voice.
         """
+        if text.strip() != "":
+            logging.info(f"Synthesizing speech for => {text}")
         if not hasattr(self, "synthesizer"):
-            self.synthesizer = self.init_speech()
+            with _SuppressTTSLogs():
+                self.synthesizer = self.init_speech()
         if text:
-            wavs = self.synthesizer.tts(
-                text, speaker_name=TTS["speaker_name"], style_wav=""
-            )
+            with _SuppressTTSLogs():
+                wavs = self.synthesizer.tts(
+                    text, speaker_name=TTS["speaker_name"], style_wav=""
+                )
             self.synthesizer.save_wav(wavs, f"{self.audio_dir}/a{self.index}.wav")
             self.index += 1
 
