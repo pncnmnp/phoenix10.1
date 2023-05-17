@@ -949,7 +949,7 @@ class Dialogue:
         To mitigate this, it is nice to have a deep voice.
         """
         if text.strip() != "":
-            logging.info(f"Synthesizing speech for - {text}")
+            logging.info(f"Synthesizing speech for => {text}")
         if not hasattr(self, "synthesizer"):
             with _SuppressTTSLogs():
                 self.synthesizer = self.init_speech()
